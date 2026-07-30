@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upfront — receivables financing on the Pinch rail</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600&f[]=general-sans@400,500,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ink:#12211B; --ink2:#3A4A43; --paper:#F4F6F3; --card:#FFF;
+  --cash:#0E8C6A; --cash-soft:#D9EFE7; --slate:#5B6B78; --slate-soft:#E7ECEE;
+  --rail:#FF5263; --rail-soft:#FFE3E6; --gold:#B98829; --gold-soft:#F7EEDC;
+  --display:"Clash Display",system-ui,sans-serif;
+  --ui:"General Sans",Inter,system-ui,sans-serif;
+  --mono:"Geist Mono",ui-monospace,monospace;
+  --bg:var(--paper); --fg:var(--ink); --fg2:var(--ink2); --surface:var(--card); --line:var(--slate-soft);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ui);background:var(--bg);color:var(--fg);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+body[data-theme="dark"]{--bg:var(--ink);--fg:var(--paper);--fg2:rgba(244,246,243,.72);
+  --surface:#1A2C25;--line:rgba(244,246,243,.14)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);font-weight:500;line-height:1.12;letter-spacing:-.015em}
+h1{font-size:clamp(34px,5vw,54px)} h2{font-size:27px} h3{font-size:18px}
+p{max-width:64ch} .muted{color:var(--fg2)} .sm{font-size:14px} .xs{font-size:12.5px}
+.eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--cash)}
+
+.topbar{position:sticky;top:0;z-index:60;height:60px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 clamp(16px,4vw,56px);background:var(--bg);
+  border-bottom:1px solid var(--line);transition:background .3s}
+.wordmark{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.02em}
+.wordmark span{color:var(--cash)}
+.bar-right{display:flex;align-items:center;gap:10px}
+.chip{font-family:var(--mono);font-size:10.5px;color:var(--slate);background:var(--slate-soft);
+  padding:5px 10px;border-radius:99px;white-space:nowrap}
+body[data-theme="dark"] .chip{background:rgba(244,246,243,.1);color:rgba(244,246,243,.6)}
+.seg{display:flex;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.seg button{font-family:var(--ui);font-size:13px;padding:6px 13px;border:0;background:transparent;
+  color:var(--fg2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--cash);color:#fff}
+
+.screen{display:none;animation:rise .3s cubic-bezier(.2,.7,.3,1) both}
+.screen.on{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.wrap{max-width:1180px;margin:0 auto;padding:clamp(26px,5vh,54px) clamp(16px,4vw,56px)}
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}.g84{grid-template-columns:1.9fr 1fr}
+@media(max-width:900px){.g2,.g3,.g4,.g84{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px}
+.card.tint{background:var(--cash-soft);border-color:transparent}
+.card.warn{background:var(--rail-soft);border-color:transparent}
+.card.gold{background:var(--gold-soft);border-color:transparent}
+body[data-theme="dark"] .card.tint{background:rgba(14,140,106,.15)}
+body[data-theme="dark"] .card.warn{background:rgba(255,82,99,.14)}
+body[data-theme="dark"] .card.gold{background:rgba(185,136,41,.16)}
+.label{font-size:12.5px;color:var(--fg2);margin-top:5px}
+.divider{height:1px;background:var(--line);margin:18px 0}
+.fig{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;letter-spacing:-.02em;line-height:1}
+.f20{font-size:20px}.f26{font-size:26px}.f34{font-size:34px}.f44{font-size:44px}
+.fig.cash{color:var(--cash)}.fig.gold{color:var(--gold)}.fig.rail{color:var(--rail)}.fig.slate{color:var(--slate)}
+.btn{font-family:var(--ui);font-weight:500;font-size:15px;padding:11px 22px;border-radius:8px;
+  border:1px solid transparent;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:var(--cash);color:#fff}.btn-primary:hover{background:#0b7458}
+.btn-secondary{background:transparent;border-color:currentColor;color:var(--fg)}
+.btn-lg{padding:14px 30px;font-size:16px}.btn-block{width:100%;justify-content:center}
+.btn-text{background:none;border:0;color:var(--cash);cursor:pointer;font-size:14px;padding:6px 0}
+.pill{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  padding:4px 9px;border-radius:99px;display:inline-block}
+.p-ok{background:var(--cash-soft);color:#0b6b51}.p-retry{background:var(--slate-soft);color:var(--slate)}
+.p-bad{background:var(--rail-soft);color:#b3303c}.p-warn{background:var(--gold-soft);color:#8a6416}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12.5px}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg2);font-weight:400}
+td:last-child,th:last-child{text-align:right}
+.row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13.5px;
+  padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+
+/* hero */
+.hero{background:var(--ink);color:var(--paper);padding:clamp(52px,10vh,104px) clamp(16px,4vw,56px)}
+.hero-in{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+@media(max-width:900px){.hero-in{grid-template-columns:1fr}}
+.hero h1{color:var(--paper);max-width:15ch;margin:16px 0 18px}
+.hero p{color:rgba(244,246,243,.78);font-size:17px;max-width:46ch}
+.motif{display:flex;align-items:flex-end;gap:4px;height:110px;opacity:.55}
+.motif i{width:4px;background:var(--slate);border-radius:2px;animation:drift 3.4s ease-in-out infinite}
+@keyframes drift{0%,100%{opacity:.3;transform:translateX(0)}50%{opacity:.85;transform:translateX(6px)}}
+.motif b{width:32px;height:32px;border-radius:99px;background:var(--cash);margin-left:9px;flex:none;align-self:center}
+.props{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;max-width:1180px;margin:0 auto;
+  padding:clamp(38px,7vh,64px) clamp(16px,4vw,56px)}
+@media(max-width:900px){.props{grid-template-columns:1fr}}
+.prop b{display:block;font-weight:500;font-size:16px;margin-bottom:5px}
+.prop .ic{width:24px;height:24px;border:1.5px solid var(--cash);border-radius:6px;margin-bottom:12px}
+
+/* eligibility rows */
+.er{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.er:last-child{border-bottom:0}
+.er .ic{width:17px;height:17px;border-radius:99px;flex:none;display:grid;place-items:center;font-size:9px;margin-top:2px}
+.er.inc .ic{background:var(--cash-soft);color:#0b6b51}
+.er.exc .ic{background:var(--slate-soft);color:var(--slate)}
+.er.exc .t{color:var(--fg2)}
+.er .t{font-size:14px}.er .r{font-size:12.5px;color:var(--fg2);margin-top:1px}
+
+/* fee bars */
+.fb{display:grid;grid-template-columns:96px 1fr 62px;align-items:center;gap:11px;
+  font-family:var(--mono);font-size:12.5px;margin-bottom:9px}
+.fbar{height:14px;border-radius:7px;background:var(--slate-soft);overflow:hidden}
+.fbar i{display:block;height:100%;border-radius:7px;width:0;transition:width .9s cubic-bezier(.2,.7,.3,1)}
+
+/* distribution chart */
+.dist{position:relative;height:150px;margin:14px 0 6px}
+.dist svg{width:100%;height:100%;overflow:visible}
+.dist-axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--fg2);margin-top:2px}
+
+/* stream */
+.stream{height:88px;display:flex;align-items:flex-end;justify-content:center;gap:5px;margin:6px 0 4px}
+.stream i{width:5px;background:var(--slate);border-radius:2px;flex:none;
+  transition:transform 1s cubic-bezier(.5,0,.2,1),opacity .7s,background .5s}
+.stream.collapsed i{transform:translateX(var(--dx)) scaleY(.12);opacity:0;background:var(--cash)}
+.lump{display:flex;align-items:baseline;justify-content:center;gap:11px;margin-top:12px;opacity:0;
+  transform:translateY(10px);transition:opacity .55s .5s,transform .55s cubic-bezier(.2,.7,.3,1) .5s}
+.lump.on{opacity:1;transform:none}
+.hero-fig{font-family:var(--display);font-weight:600;font-size:clamp(44px,8vw,66px);color:var(--cash);
+  line-height:1;letter-spacing:-.03em}
+
+/* ticks */
+.ticks{display:grid;grid-template-columns:repeat(26,1fr);gap:5px;margin:18px 0 8px}
+@media(max-width:760px){.ticks{grid-template-columns:repeat(13,1fr)}}
+.tk{height:44px;border-radius:4px;background:var(--slate-soft);transition:background .3s,box-shadow .3s}
+.tk.settled{background:var(--cash)}
+.tk.retry{background:transparent;border:1.5px solid var(--rail)}
+.tk.fail{background:var(--rail)}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--fg2);margin-top:11px}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.ev{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.ev:last-child{border-bottom:0}
+
+/* route */
+.route{display:flex;align-items:stretch;flex-wrap:wrap;margin-top:14px}
+.rn{flex:1;min-width:130px;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+body[data-theme="dark"] .rn{background:rgba(244,246,243,.05)}
+.rn b{display:block;font-weight:500;font-size:14px}.rn span{font-size:11.5px;color:var(--fg2)}
+.rn.us{background:var(--cash-soft);border-color:transparent}
+.rn.us b,.rn.us span{color:#0b5b46}
+.ra{flex:none;width:80px;position:relative;align-self:center}
+.ra:before{content:"";position:absolute;top:50%;left:5px;right:12px;height:1.5px;background:var(--slate)}
+.ra:after{content:"";position:absolute;top:calc(50% - 4px);right:5px;border-left:7px solid var(--slate);
+  border-top:4px solid transparent;border-bottom:4px solid transparent}
+.ra label{position:absolute;top:-16px;left:0;right:7px;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--fg2)}
+@media(max-width:760px){.ra{width:100%;height:36px;transform:rotate(90deg);margin:8px 0}}
+
+.call{font-family:var(--mono);font-size:12px;background:var(--ink);color:var(--paper);border-radius:7px;
+  padding:9px 12px;margin-bottom:6px;overflow-x:auto;white-space:nowrap}
+.call .v{color:#8fb8ff}.call .g{color:#7fd4b8}.call .h{color:#e0c07a}.call .c{color:#8a9aa4}
+.api-row{display:grid;grid-template-columns:150px 1fr;gap:18px;padding:18px 0;border-bottom:1px solid var(--line);align-items:start}
+@media(max-width:720px){.api-row{grid-template-columns:1fr}}
+.api-row:last-child{border-bottom:0}
+.stage{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);padding-top:3px}
+
+.callout{border-radius:11px;padding:16px 19px;font-size:14px;margin:14px 0}
+.callout.cash{background:var(--cash-soft);color:#0b5b46}
+.callout.warn{background:var(--rail-soft);color:#8f2833}
+.callout.gold{background:var(--gold-soft);color:#7a5713}
+body[data-theme="dark"] .callout.cash{background:rgba(14,140,106,.16);color:var(--cash-soft)}
+body[data-theme="dark"] .callout.warn{background:rgba(255,82,99,.15);color:#ffc4ca}
+body[data-theme="dark"] .callout.gold{background:rgba(185,136,41,.18);color:#f0dcb4}
+.callout b{font-weight:600}
+
+.slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:var(--slate-soft);outline:none}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:21px;height:21px;border-radius:99px;
+  background:var(--cash);cursor:pointer;border:3px solid var(--card)}
+.preset-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.preset{font-family:var(--mono);font-size:13px;padding:8px 14px;border:1px solid var(--line);
+  background:transparent;color:var(--fg);border-radius:99px;cursor:pointer}
+.preset.on{background:var(--cash);color:#fff;border-color:var(--cash)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 20px}
+.tab{font-size:13.5px;padding:8px 15px;border:1px solid var(--line);background:transparent;
+  color:var(--fg2);border-radius:99px;cursor:pointer}
+.tab.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+.runner{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:80;display:flex;
+  align-items:center;gap:5px;background:var(--ink);color:var(--paper);padding:8px 11px;border-radius:99px;
+  box-shadow:0 10px 30px rgba(18,33,27,.3)}
+.runner button{font-family:var(--mono);font-size:11.5px;background:rgba(244,246,243,.12);color:var(--paper);
+  border:0;border-radius:99px;padding:6px 11px;cursor:pointer}
+.runner button:hover{background:rgba(244,246,243,.24)}
+.runner .now{font-family:var(--mono);font-size:10.5px;opacity:.65;padding:0 7px;min-width:112px;text-align:center}
+.runner .dot{width:6px;height:6px;border-radius:99px;background:var(--cash)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-theme="light">
+
+<header class="topbar">
+  <div class="wordmark">Up<span>front</span></div>
+  <div class="bar-right">
+    <div class="seg" id="seg">
+      <button aria-pressed="true" onclick="go('s2')">Business</button>
+      <button aria-pressed="false" onclick="go('s5')">Invest</button>
+      <button aria-pressed="false" onclick="go('s8')">Engine</button>
+    </div>
+    <div class="chip">Prototype · test mode · simulated</div>
+  </div>
+</header>
+
+<main>
+
+<!-- S0 LANDING -->
+<section class="screen on" id="s0">
+  <div class="hero">
+    <div class="hero-in">
+      <div>
+        <div class="eyebrow">Receivables financing</div>
+        <h1>Money you've earned, today.</h1>
+        <p>Upfront buys committed contract revenue and open invoices at a discount, funded by ordinary investors, and collects it back on the Pinch rail we operate.</p>
+        <div style="margin-top:24px"><button class="btn btn-primary btn-lg" onclick="go('s1')">Connect Pinch</button></div>
+        <div class="mono" style="font-size:11.5px;color:rgba(244,246,243,.55);margin-top:14px">Built on Pinch · Australia &amp; New Zealand</div>
+      </div>
+      <div class="motif" id="motif"></div>
+    </div>
+  </div>
+  <div class="props">
+    <div class="prop"><div class="ic"></div><b>Cash in minutes</b><span class="muted sm">Connect Pinch, get a priced offer, get funded. No forms.</span></div>
+    <div class="prop"><div class="ic"></div><b>Underwritten on the rail</b><span class="muted sm">We read every payment attempt you've ever made, not a P&amp;L you typed in.</span></div>
+    <div class="prop"><div class="ic"></div><b>Repayment is plumbing</b><span class="muted sm">Collections route back automatically. Nothing changes for your customers.</span></div>
+  </div>
+</section>
+
+<!-- S1 CONNECT -->
+<section class="screen" id="s1">
+  <div class="wrap" style="max-width:520px;padding-top:8vh">
+    <div class="card" id="cCard" style="padding:38px">
+      <div class="mono" style="font-size:11.5px;color:var(--slate);margin-bottom:18px">UPFRONT &nbsp;·&nbsp; PINCH</div>
+      <h2>Connect your Pinch account</h2>
+      <p class="muted sm" style="margin-top:9px">Read-only. We pull your contracts, payers and every payment ever attempted to build your offer.</p>
+      <div style="margin-top:22px"><button class="btn btn-primary btn-block" onclick="connect()">Connect Pinch</button></div>
+      <div class="mono" style="font-size:11.5px;color:var(--slate);margin-top:18px;display:flex;flex-direction:column;gap:7px">
+        <div>✓ &nbsp;Read-only access</div><div>✓ &nbsp;No cost, no obligation</div><div>✓ &nbsp;About 2 minutes</div>
+      </div>
+    </div>
+    <div class="card" id="cDone" style="display:none;padding:38px;text-align:center">
+      <div style="width:52px;height:52px;border-radius:99px;background:var(--cash-soft);color:var(--cash);
+        display:grid;place-items:center;font-size:24px;margin:0 auto 16px">✓</div>
+      <h2>Connected</h2>
+      <p class="muted sm" style="margin-top:9px">Reading Voltride's contracts and 4,820 payment attempts…</p>
+    </div>
+  </div>
+</section>
+
+<!-- S2 ANALYSIS -->
+<section class="screen" id="s2">
+  <div class="wrap">
+    <div class="eyebrow">Pinch rail analysis</div>
+    <h2 style="margin:10px 0 8px">What's actually on Voltride's rail.</h2>
+    <p class="muted sm">Priced from 4,820 real payment attempts. Nothing self-reported.</p>
+
+    <div class="grid g84" style="margin-top:26px">
+      <div style="display:flex;flex-direction:column;gap:18px">
+
+        <div class="card">
+          <div style="display:flex;gap:44px;flex-wrap:wrap">
+            <div><div class="fig f34">184</div><div class="label">Eligible contracts</div></div>
+            <div><div class="fig f34">$166,388</div><div class="label">Eligible face value</div></div>
+            <div><div class="fig f34">$162,491</div><div class="label">Gross collections</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>What we can finance</h3>
+          <div style="margin-top:12px">
+            <div class="er inc"><span class="ic">✓</span><div><div class="t">184 committed-term contracts</div></div></div>
+            <div class="er inc"><span class="ic">✓</span><div><div class="t">184 with an active Pinch mandate</div></div></div>
+            <div class="er exc"><span class="ic">✕</span><div><div class="t">12 cancel-anytime plans</div><div class="r">Collection can't be guaranteed</div></div></div>
+            <div class="er exc"><span class="ic">✕</span><div><div class="t">4 with no active mandate</div><div class="r">No stored payment method</div></div></div>
+          </div>
+        </div>
+
+        <!-- THE FEE PANEL -->
+        <div class="card gold">
+          <div class="eyebrow" style="color:#8a6416">Transaction cost analysis · the thing nobody else can see</div>
+          <div style="display:flex;gap:40px;flex-wrap:wrap;margin:16px 0 4px">
+            <div><div class="fig f34 gold">2.88%</div><div class="label" style="color:#7a5713">Pinch fee drag on this book</div></div>
+            <div><div class="fig f34 gold">$4,683</div><div class="label" style="color:#7a5713">Cost to collect $162,491</div></div>
+          </div>
+          <div class="divider" style="background:rgba(122,87,19,.2)"></div>
+          <div style="font-family:var(--mono);font-size:12.5px;color:#7a5713;display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;justify-content:space-between"><span>4,784 transactions × ($0.35 + $0.30)</span><span>$3,037</span></div>
+            <div style="display:flex;justify-content:space-between"><span>324 declines × $5.00</span><span>$1,620</span></div>
+            <div style="display:flex;justify-content:space-between"><span>26 settlement transfers × $1.00</span><span>$26</span></div>
+          </div>
+          <div class="callout gold" style="margin:14px 0 0">
+            <b>Voltride bills $34.78 weekly.</b> Pinch's flat $0.30 per debit is 0.86% on a ticket that
+            small, and each $5 decline fee is 14% of one payment. Same revenue billed monthly would cost
+            <b>2.14%</b> instead of 5.65% annualised — worth about <b>$5,700 a year</b> to them.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow" style="color:var(--slate)">Fee drag by billing cadence · identical revenue</div>
+          <div style="margin-top:16px">
+            <div class="fb"><span>Weekly $34.78</span><span class="fbar"><i style="background:var(--rail)" data-w="100%"></i></span><span>5.65%</span></div>
+            <div class="fb"><span>Fortnightly $69.56</span><span class="fbar"><i style="background:var(--gold)" data-w="62%"></i></span><span>3.51%</span></div>
+            <div class="fb"><span>Monthly $150.71</span><span class="fbar"><i style="background:var(--cash)" data-w="38%"></i></span><span>2.14%</span></div>
+            <div class="fb"><span>Quarterly $452.14</span><span class="fbar"><i style="background:var(--cash)" data-w="23%"></i></span><span>1.29%</span></div>
+          </div>
+        </div>
+
+        <div class="card tint">
+          <div style="display:flex;gap:40px;flex-wrap:wrap">
+            <div><div class="fig f34 cash">$157,808</div><div class="label" style="color:#0b5b46">Net settled cash we price against</div></div>
+          </div>
+          <div class="xs" style="margin-top:10px;color:#0b5b46;opacity:.85">$166,388 face − 2.34% customer bad debt − 2.88% Pinch fees. We advance against what actually lands, never against gross.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card">
+          <div class="eyebrow" style="color:var(--slate)">Bad-debt scanner</div>
+          <div class="fig f26" style="margin-top:14px">2.34%</div>
+          <div class="label">Net bad-debt rate</div>
+          <svg viewBox="0 0 200 40" preserveAspectRatio="none" style="height:38px;width:100%;margin:14px 0 6px">
+            <polyline fill="none" stroke="#5B6B78" stroke-width="1.5"
+              points="0,24 18,22 36,25 54,21 72,23 90,20 108,24 126,22 144,23 162,21 180,23 200,22"/>
+          </svg>
+          <div class="xs muted">12-month trend — flat</div>
+          <div class="divider"></div>
+          <div style="font-family:var(--mono);font-size:12.5px;color:var(--fg2);display:flex;flex-direction:column;gap:6px">
+            <div>6.76% gross dishonours</div>
+            <div>65.4% cured on retry</div>
+            <div>22.5% hard failures</div>
+            <div>200 distinct payers</div>
+            <div>Top payer 0.5%</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow" style="color:var(--slate)">Failure mix</div>
+          <p class="xs muted" style="margin-top:10px">Two books can show the same 7% dishonour rate and be completely different credits.</p>
+          <div style="margin-top:14px">
+            <div class="fb"><span class="xs">Soft · retryable</span><span class="fbar"><i style="background:var(--cash)" data-w="77%"></i></span><span>77.5%</span></div>
+            <div class="fb"><span class="xs">Hard · terminal</span><span class="fbar"><i style="background:var(--rail)" data-w="23%"></i></span><span>22.5%</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="eyebrow" style="color:var(--slate)">Rail Score</div>
+          <div class="fig f44" style="margin-top:12px">B+</div>
+          <div class="label">Proprietary. Not an agency rating.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:26px">
+      <button class="btn btn-primary" onclick="go('s3')">See the offer</button>
+    </div>
+  </div>
+</section>
+
+<!-- S3 OFFER -->
+<section class="screen" id="s3">
+  <div class="wrap" style="text-align:center;max-width:940px">
+    <div class="sm muted" style="text-align:left">Voltride · 184 committed contracts · Rail Score B+</div>
+    <div class="muted sm" style="margin-top:22px" id="cap">26 weeks of contracted payments</div>
+    <div class="stream" id="stream"></div>
+    <div style="display:flex;justify-content:space-between;max-width:600px;margin:0 auto;
+      font-family:var(--mono);font-size:10.5px;color:var(--fg2)">
+      <span>week 1</span><span>week 13</span><span>week 26</span></div>
+
+    <div class="lump" id="lump">
+      <span class="hero-fig">$149,378</span><span style="font-size:19px;color:var(--slate)">today</span>
+    </div>
+    <div class="muted sm" style="margin-top:11px" id="sub"></div>
+
+    <div style="display:flex;justify-content:center;flex-wrap:wrap;margin:28px auto 0">
+      <span class="mono" style="font-size:14px;padding:0 20px;border-right:1px solid var(--line)">94.7% advance</span>
+      <span class="mono" style="font-size:14px;padding:0 20px;border-right:1px solid var(--line)">$8,358 discount</span>
+      <span class="mono" style="font-size:14px;padding:0 20px;border-right:1px solid var(--line)">26-week term</span>
+      <span class="mono" style="font-size:14px;padding:0 20px">3.12mo average life</span>
+    </div>
+
+    <div class="callout cash" style="max-width:620px;margin:26px auto 0;text-align:left">
+      <b>23.56% p.a. effective.</b> That's your real cost of capital, annualised against the cash you
+      actually receive over the time it's actually outstanding. Comparable Australian invoice facilities
+      run mid-teens to high-twenties. An unsecured SME lender would charge you around 35%.
+    </div>
+
+    <div class="callout warn" style="max-width:620px;margin:12px auto 0;text-align:left">
+      <b>What you're agreeing to.</b> If a customer payment fails, it comes back to you — we'll net it
+      off your surplus, and debit your recourse mandate if the book runs short. This is a real
+      obligation, not a formality.
+    </div>
+
+    <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center;gap:5px">
+      <button class="btn btn-primary btn-lg" onclick="go('s4')">Accept offer</button>
+      <button class="btn-text" onclick="go('s8')">See how it's priced</button>
+    </div>
+  </div>
+</section>
+
+<!-- S4 FUNDED -->
+<section class="screen" id="s4">
+  <div class="wrap" style="max-width:560px;text-align:center;padding-top:6vh">
+    <div style="width:52px;height:52px;border-radius:99px;background:var(--cash-soft);color:var(--cash);
+      display:grid;place-items:center;font-size:24px;margin:0 auto 18px">✓</div>
+    <h2>You're funded.</h2>
+    <div class="fig f44 cash" style="margin:18px 0 6px">$149,378</div>
+    <div class="label">sent to Voltride</div>
+    <div class="card" style="margin-top:22px;text-align:left">
+      <div class="row"><span class="muted">Cash today</span><span>$149,378</span></div>
+      <div class="row"><span class="muted">Net settled over term</span><span>$157,808</span></div>
+      <div class="row"><span class="muted">Your cost</span><span>$8,358</span></div>
+      <div class="row"><span class="muted">Effective rate</span><span>23.56% p.a.</span></div>
+      <div class="row"><span class="muted">Reserve released at week 26</span><span>$72</span></div>
+      <div class="row"><span class="muted">Contracts · term</span><span>184 · 26 weeks</span></div>
+    </div>
+    <div style="margin-top:24px"><button class="btn btn-primary" onclick="go('s4b')">Go to collections</button></div>
+  </div>
+</section>
+
+<!-- S4b COLLECTIONS -->
+<section class="screen" id="s4b">
+  <div class="wrap">
+    <h2>Voltride — collections</h2>
+    <p class="muted sm" style="margin-top:6px">We collect on your Pinch rail. You see everything.</p>
+
+    <div class="card" style="margin-top:20px">
+      <div class="eyebrow" style="color:var(--slate)">How the money routes</div>
+      <div class="route">
+        <div class="rn"><b>Riders</b><span>pay as normal</span></div>
+        <span class="ra"><label>existing mandate</label></span>
+        <div class="rn"><b>Voltride</b><span>managed merchant</span></div>
+        <span class="ra"><label>Current-Merchant</label></span>
+        <div class="rn us"><b>Upfront</b><span>collections account</span></div>
+      </div>
+      <p class="sm muted" style="margin-top:16px">Customers never re-authorise anything. The mandate stays where it was and the debit still shows <b>Voltride</b>. We operate their account as a managed merchant under our own Pinch credentials, so settlement routes to our collections account net of dishonours and fees.</p>
+    </div>
+
+    <div class="grid g4" style="margin-top:20px">
+      <div class="card"><div class="fig f20 cash" id="fCol">$0</div><div class="label">Collected</div></div>
+      <div class="card"><div class="fig f20 slate" id="fOut">$157,808</div><div class="label">Outstanding</div></div>
+      <div class="card"><div class="fig f20">2.34%</div><div class="label">Net bad debt</div></div>
+      <div class="card"><div class="fig f20">Fri</div><div class="label">Next settlement</div></div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <h3>Collection timeline</h3>
+        <button class="btn-text" onclick="runCollections()">Replay</button>
+      </div>
+      <div class="ticks" id="ticks"></div>
+      <div class="legend">
+        <span><i style="background:var(--slate-soft)"></i>Scheduled</span>
+        <span><i style="background:var(--cash)"></i>Settled</span>
+        <span><i style="border:1.5px solid var(--rail)"></i>Retrying</span>
+        <span><i style="background:var(--rail)"></i>Dishonoured</span>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:20px">
+      <div class="card">
+        <h3>Payment events</h3>
+        <div id="log" style="margin-top:10px"><div class="xs muted">Waiting for overnight bank results…</div></div>
+      </div>
+      <div class="card">
+        <h3>Recourse</h3>
+        <div id="rec" style="margin-top:12px"><div class="xs muted">Nothing charged back yet.</div></div>
+        <div class="divider"></div>
+        <p class="xs muted">Recourse is a direct-debit mandate from Voltride to Upfront, signed at funding. A shortfall is <span class="mono">POST /payments</span> against their own Payer record — not a clause in a contract.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S5 MARKETPLACE -->
+<section class="screen" id="s5">
+  <div class="wrap">
+    <div class="eyebrow" style="color:var(--slate)">The part that's never existed here</div>
+    <h2 style="margin-top:10px">Back an Australian business. Earn what the bank used to.</h2>
+    <p class="muted sm" style="margin-top:7px">Receivables financing has been a closed club of non-bank lenders. Here, anyone can fund a book from $500.</p>
+
+    <div class="callout warn" style="margin-top:20px">
+      <b>Read this before anything else.</b> This is small-business credit risk, not a deposit. Across our
+      four current books, modelling 20,000 correlated-default scenarios: the mean return is
+      <b>14.72%</b>, the 5th percentile is <b>2.49%</b>, and the 1st percentile is <b>−22.46%</b>.
+      About <b>1 in 25</b> outcomes loses money. Capital is not guaranteed and you cannot withdraw early.
+    </div>
+
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card">
+        <div style="font-size:15px;font-weight:500">Voltride <span class="muted sm" style="display:block;font-weight:400">E-bike subscriptions · contract</span></div>
+        <div style="margin:14px 0"><div class="fig f26 gold">13.29%</div><div class="label">expected p.a.</div></div>
+        <div class="mono xs" style="color:var(--fg2);display:flex;flex-direction:column;gap:4px">
+          <span>Book $149,378 · life 3.1mo</span><span>Rail Score B+ · fee drag 2.88%</span>
+          <span style="color:var(--rail)">5th pct 2.49% · 1 in 25 loses</span>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="pick('voltride')">Back this book</button>
+      </div>
+      <div class="card">
+        <div style="font-size:15px;font-weight:500">Northline Gyms <span class="muted sm" style="display:block;font-weight:400">Fitness · contract</span></div>
+        <div style="margin:14px 0"><div class="fig f26 gold">16.36%</div><div class="label">expected p.a.</div></div>
+        <div class="mono xs" style="color:var(--fg2);display:flex;flex-direction:column;gap:4px">
+          <span>Book $113,433 · life 3.1mo</span><span>Rail Score B · fee drag 4.40%</span>
+          <span style="color:var(--rail)">Cleanest history, worst fee drag</span>
+        </div>
+        <button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="pick('northline')">Back this book</button>
+      </div>
+      <div class="card">
+        <div style="font-size:15px;font-weight:500">Kerrigan Fitout <span class="muted sm" style="display:block;font-weight:400">Commercial fitout · invoice</span></div>
+        <div style="margin:14px 0"><div class="fig f26 gold">22.78%</div><div class="label">expected p.a.</div></div>
+        <div class="mono xs" style="color:var(--fg2);display:flex;flex-direction:column;gap:4px">
+          <span>Book $118,255 · life 1.5mo</span><span>Rail Score C · fee drag 0.04%</span>
+          <span style="color:var(--cash)">Work delivered · 75% survives failure</span>
+        </div>
+        <button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="pick('kerrigan')">Back this book</button>
+      </div>
+    </div>
+
+    <div class="card tint" style="margin-top:20px">
+      <h3 style="color:#0b5b46">Auto-spread — on by default</h3>
+      <p class="sm" style="margin-top:7px;color:#0b5b46">Spreading across 25 books cuts the worst-case outcome from <b>−34.05%</b> to <b>−8.71%</b>. It does not raise your return — the mean stays around 10.8% either way — and it makes small losses more frequent while making catastrophic ones rare. Past 25 books it stops helping, because correlation means you cannot diversify away the economy.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S6 AMOUNT -->
+<section class="screen" id="s6">
+  <div class="wrap" style="max-width:700px">
+    <button class="btn-text" onclick="go('s5')" style="color:var(--fg2)">← All books</button>
+    <h2 style="margin-top:12px">How much in <span id="bName">Voltride</span>?</h2>
+
+    <div class="card" style="margin-top:20px">
+      <div class="preset-row">
+        <button class="preset" onclick="setAmt(500,this)">$500</button>
+        <button class="preset on" onclick="setAmt(1000,this)">$1,000</button>
+        <button class="preset" onclick="setAmt(5000,this)">$5,000</button>
+        <button class="preset" onclick="setAmt(25000,this)">$25,000</button>
+      </div>
+      <input type="range" id="sl" min="100" max="50000" step="100" value="1000" class="slider" oninput="setAmt(this.value)">
+      <div class="fig f44" style="margin-top:18px"><span id="aVal">$1,000</span></div>
+      <div class="label">your stake</div>
+
+      <div class="divider"></div>
+      <div class="row"><span class="muted">Expected profit</span><span class="mono cash" id="pExp">+$34.50</span></div>
+      <div class="row"><span class="muted">If it goes badly (5th pct)</span><span class="mono" id="pBad">+$6.46</span></div>
+      <div class="row"><span class="muted">If it goes very badly (1st pct)</span><span class="mono rail" id="pWorst">−$58.32</span></div>
+      <div class="row"><span class="muted">Chance of losing money</span><span class="mono">4.00%</span></div>
+      <div class="row"><span class="muted">Capital returned by</span><span class="mono">week 26 · weekly</span></div>
+
+      <div class="callout warn" style="margin-top:16px">
+        <b>Why the dollar figure looks small.</b> 13.29% is a rate on capital <i>outstanding</i>, and this
+        book pays you back weekly rather than at the end. Average life is 3.12 months, so $1,000 earns
+        about $34.50 over the full 26 weeks — not $71. Turn on auto-reinvest to keep the capital working.
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <div class="eyebrow" style="color:var(--slate)">Distribution of outcomes · 20,000 simulations</div>
+      <div class="dist" id="dist"></div>
+      <div class="dist-axis"><span>−40%</span><span>−20%</span><span>0%</span><span>+20%</span><span>+40%</span></div>
+      <p class="xs muted" style="margin-top:10px">The red region is capital loss. The dashed line is the mean. Most outcomes cluster above it — this distribution is left-skewed, which means the average is dragged down by rare bad years rather than lifted by good ones.</p>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:20px;gap:10px">
+      <button class="btn btn-secondary" onclick="go('s7')">I understand the risks</button>
+    </div>
+  </div>
+</section>
+
+<!-- S7 KNOWLEDGE CHECK -->
+<section class="screen" id="s7">
+  <div class="wrap" style="max-width:560px;padding-top:5vh">
+    <div class="eyebrow" style="color:var(--slate)">Before your first investment</div>
+    <h2 style="margin-top:10px">Three questions</h2>
+    <p class="muted sm" style="margin-top:7px">ASIC suggests marketplace lenders check investor understanding before a first investment. We agree with them.</p>
+
+    <div class="card" style="margin-top:20px">
+      <div id="q1"><p class="sm" style="font-weight:500">1. If the business you funded goes insolvent, what happens to your capital?</p>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,false)">It's protected by recourse</button>
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,true)">I can lose some or all of it</button>
+        </div></div>
+      <div class="divider"></div>
+      <div id="q2"><p class="sm" style="font-weight:500">2. Can you withdraw before the book finishes collecting?</p>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,true)">No — capital returns weekly as it's collected</button>
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,false)">Yes, any time</button>
+        </div></div>
+      <div class="divider"></div>
+      <div id="q3"><p class="sm" style="font-weight:500">3. Is the expected return guaranteed?</p>
+        <div style="margin-top:11px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,false)">Yes, it's backed by contracts</button>
+          <button class="btn btn-secondary btn-block" style="font-size:14px" onclick="ans(this,true)">No — it's an average, and about 1 in 25 loses money</button>
+        </div></div>
+    </div>
+    <div id="kcMsg" class="callout cash" style="display:none">All three correct. You can invest.</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px">
+      <button class="btn btn-primary" id="kcBtn" disabled style="opacity:.4" onclick="go('s5')">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- S8 ENGINE -->
+<section class="screen" id="s8">
+  <div class="wrap">
+    <div class="eyebrow" style="color:var(--slate)">Under the hood</div>
+    <h2 style="margin:10px 0 8px">How a book gets priced.</h2>
+
+    <div class="tabs">
+      <button class="tab on" onclick="tab('t1',this)">Two asset classes</button>
+      <button class="tab" onclick="tab('t2',this)">Pinch integration</button>
+      <button class="tab" onclick="tab('t3',this)">What we got wrong</button>
+    </div>
+
+    <div id="t1">
+      <div class="callout cash">
+        <b>An invoice and a subscription are not the same asset.</b> An invoice is money owed for work
+        already delivered — the debtor owes it whether or not the supplier survives. A subscription is
+        money owed for service <i>not yet</i> delivered. If the business fails, the service stops and
+        the stream stops with it. That one distinction changes loss severity by more than 3×.
+      </div>
+      <div class="card" style="margin-top:16px;overflow-x:auto">
+        <table>
+          <thead><tr><th>Book</th><th>Class</th><th>Score</th><th>Bad debt</th><th>Fee drag</th><th>Net settled</th><th>Cash today</th><th>Biz cost</th><th>Inv expected</th></tr></thead>
+          <tbody>
+            <tr><td>Voltride</td><td>contract</td><td>B+</td><td>2.34%</td><td>2.88%</td><td>$157,808</td><td>$149,378</td><td>23.56%</td><td>13.29%</td></tr>
+            <tr><td>Northline</td><td>contract</td><td>B</td><td>1.57%</td><td>4.40%</td><td>$120,971</td><td>$113,433</td><td>28.42%</td><td>16.36%</td></tr>
+            <tr><td>Studio 04</td><td>contract</td><td>C</td><td>5.59%</td><td>2.39%</td><td>$114,999</td><td>$105,119</td><td>38.90%</td><td>20.66%</td></tr>
+            <tr><td>Kerrigan</td><td>invoice</td><td>C</td><td>7.94%</td><td>0.04%</td><td>$132,776</td><td>$118,255</td><td>43.11%</td><td>22.78%</td></tr>
+          </tbody>
+        </table>
+        <p class="xs muted" style="margin-top:12px">Read the fee-drag column against the bad-debt column. Northline has the <b>cleanest</b> payment history and the <b>worst</b> economics, because it bills $15.95 a week. Kerrigan has the dirtiest history and near-zero fee drag, because its median ticket is $18,000 and Pinch caps direct-debit fees at $5.</p>
+      </div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="card"><div class="eyebrow" style="color:var(--slate)">Survives business failure</div>
+          <div style="margin-top:14px">
+            <div class="fb"><span>Invoice</span><span class="fbar"><i style="background:var(--cash)" data-w="75%"></i></span><span>75%</span></div>
+            <div class="fb"><span>Contract</span><span class="fbar"><i style="background:var(--rail)" data-w="15%"></i></span><span>15%</span></div>
+          </div></div>
+        <div class="card"><div class="eyebrow" style="color:var(--slate)">Loss given default</div>
+          <div style="margin-top:14px">
+            <div class="fb"><span>Invoice</span><span class="fbar"><i style="background:var(--cash)" data-w="14%"></i></span><span>13.75%</span></div>
+            <div class="fb"><span>Contract</span><span class="fbar"><i style="background:var(--rail)" data-w="47%"></i></span><span>46.75%</span></div>
+          </div></div>
+      </div>
+    </div>
+
+    <div id="t2" style="display:none">
+      <div class="callout cash">
+        We hold <b>one</b> set of Pinch credentials. Every business becomes a <b>managed merchant</b>
+        under us, and we act as them by sending one header. The customer keeps seeing the business's own
+        name and nothing about their payment changes.
+      </div>
+      <div style="margin-top:14px">
+        <div class="api-row"><div class="stage">Onboard</div><div>
+          <div class="call"><span class="v">POST</span> /merchants/managed</div>
+          <div class="call"><span class="v">POST</span> /documents <span class="c">· KYB</span></div>
+          <div class="call"><span class="v">POST</span> /webhooks <span class="c">· per merchant, immediately</span></div>
+          <p class="sm muted">Store the returned <span class="mono">mch_</span> id. The compliance object returns liveEnabled, transactionsEnabled and settlementsEnabled — all false at creation.</p></div></div>
+        <div class="api-row"><div class="stage">Underwrite</div><div>
+          <div class="call"><span class="h">Current-Merchant: mch_7Kd93Nf2Qp01Rt55</span></div>
+          <div class="call"><span class="g">GET</span> /plans/{id}/calculated-payments <span class="c">· forward schedule</span></div>
+          <div class="call"><span class="g">GET</span> /payments/processed <span class="c">· paged · dishonour history</span></div>
+          <p class="sm muted">calculated-payments hands us the exact forward cashflow, computed by Pinch. payments/processed gives every attempt, every dishonour code, every cure. No other lender has either.</p></div></div>
+        <div class="api-row"><div class="stage">Collect</div><div>
+          <div class="call"><span class="h">webhook</span> bank-results <span class="c">· batched, 1–3 day lag</span></div>
+          <div class="call"><span class="v">POST</span> /payments <span class="c">· soft retries only, with Nonce</span></div>
+          <p class="sm muted">Soft codes retry. Hard codes never do — retrying a blocked-by-bank burns a $5 decline fee and cannot succeed. Every handler is idempotent on the evt_ id, because a payment can settle then reverse days later.</p></div></div>
+        <div class="api-row"><div class="stage">Settle</div><div>
+          <div class="call"><span class="g">GET</span> /transfers &nbsp; <span class="g">GET</span> /transfers/items/{id}</div>
+          <p class="sm muted">Transfers arrive net of dishonours and fees. We reconcile investors against net settled cash, which is why a failed customer payment can never silently reach them.</p></div></div>
+      </div>
+    </div>
+
+    <div id="t3" style="display:none">
+      <div class="callout warn">
+        <b>Our first model said 14.25% and it was wrong.</b> Five errors, all pointing the same
+        direction. This is what changed.
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="er inc"><span class="ic">1</span><div><div class="t">Pinch fees weren't in the model at all</div><div class="r">$4,683 on Voltride's book — about 63% of the entire gross margin, simply absent.</div></div></div>
+        <div class="er inc"><span class="ic">2</span><div><div class="t">Ticket size and cadence were treated as cosmetic</div><div class="r">Same revenue, weekly vs quarterly billing, is a 4.4× difference in cost. This inverted which books we thought were good.</div></div></div>
+        <div class="er inc"><span class="ic">3</span><div><div class="t">Subscription revenue was modelled as a receivable</div><div class="r">It isn't. Service not yet delivered dies with the business. Continuation is 15%, not 100%.</div></div></div>
+        <div class="er inc"><span class="ic">4</span><div><div class="t">Default probability came from the wrong population</div><div class="r">We used the economy-wide base rate. Prospa, Australia's largest listed SME lender, realises 5.7–9.9% net bad debt at a 35% yield.</div></div></div>
+        <div class="er inc"><span class="ic">5</span><div><div class="t">A mean was reported with no distribution behind it</div><div class="r">SME defaults are correlated. The recession that closes the gym closes the tutoring studio the same quarter.</div></div></div>
+      </div>
+      <div class="card gold" style="margin-top:14px">
+        <div class="eyebrow" style="color:#8a6416">Corrected</div>
+        <p class="sm" style="margin-top:9px;color:#7a5713">Mean <b>14.72%</b>. Median <b>18.65%</b>. 5th percentile <b>2.49%</b>. 1st percentile <b>−22.46%</b>. Probability of loss <b>4.00%</b>. Probability of underperforming a term deposit <b>6.44%</b>.</p>
+        <p class="sm" style="margin-top:9px;color:#7a5713">The mean was roughly right. The framing was not. A mid-teens return in small-business credit is a correctly priced risk, not a safe one, and it has to be shown as a distribution.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="runner" id="runner">
+  <span class="dot"></span>
+  <button onclick="prev()">←</button>
+  <span class="now mono" id="rNow">S0 · Landing</span>
+  <button onclick="next()">→</button>
+  <button onclick="go('s0')">Reset</button>
+</div>
+
+<script>
+const ORDER=["s0","s1","s2","s3","s4","s4b","s5","s6","s7","s8"];
+const NAMES={s0:"S0 · Landing",s1:"S1 · Connect",s2:"S2 · Analysis",s3:"S3 · Offer",
+  s4:"S4 · Funded",s4b:"S4 · Collections",s5:"S5 · Marketplace",s6:"S6 · Amount",
+  s7:"S7 · Knowledge check",s8:"S8 · Engine"};
+const DARK=["s5","s6","s7"];
+let idx=0,timers=[];
+const T=(f,m)=>timers.push(setTimeout(f,m));
+const clearT=()=>{timers.forEach(clearTimeout);timers=[]};
+
+function go(id){
+  clearT(); idx=ORDER.indexOf(id);
+  ORDER.forEach(s=>document.getElementById(s).classList.toggle("on",s===id));
+  document.body.dataset.theme=DARK.includes(id)?"dark":"light";
+  document.getElementById("rNow").textContent=NAMES[id];
+  const b=document.querySelectorAll("#seg button");
+  b[0].setAttribute("aria-pressed",["s1","s2","s3","s4","s4b"].includes(id));
+  b[1].setAttribute("aria-pressed",DARK.includes(id));
+  b[2].setAttribute("aria-pressed",id==="s8");
+  window.scrollTo({top:0,behavior:"instant"});
+  const scr=document.getElementById(id);
+  scr.querySelectorAll(".fbar i").forEach(x=>{x.style.width="0";T(()=>x.style.width=x.dataset.w,120)});
+  if(id==="s1")resetConnect();
+  if(id==="s3")runStream();
+  if(id==="s4b")runCollections();
+  if(id==="s6")drawDist();
+}
+const next=()=>go(ORDER[Math.min(ORDER.length-1,idx+1)]);
+const prev=()=>go(ORDER[Math.max(0,idx-1)]);
+
+/* motif */
+const motif=document.getElementById("motif");
+for(let i=0;i<26;i++){const b=document.createElement("i");
+  b.style.height=(16+Math.random()*44)+"px";b.style.animationDelay=(i*.07)+"s";motif.appendChild(b)}
+motif.appendChild(document.createElement("b"));
+
+/* connect */
+function resetConnect(){document.getElementById("cCard").style.display="";
+  document.getElementById("cDone").style.display="none"}
+function connect(){document.getElementById("cCard").style.display="none";
+  document.getElementById("cDone").style.display="";T(()=>go("s2"),1400)}
+
+/* stream */
+const stream=document.getElementById("stream");
+for(let i=0;i<26;i++){const t=document.createElement("i");
+  t.style.height=(24+Math.sin(i/2.4)*8+Math.random()*10)+"px";stream.appendChild(t)}
+function runStream(){
+  const lump=document.getElementById("lump"),sub=document.getElementById("sub"),cap=document.getElementById("cap");
+  stream.classList.remove("collapsed");lump.classList.remove("on");
+  sub.textContent="";cap.textContent="26 weeks of contracted payments";
+  const w=stream.getBoundingClientRect().width;
+  [...stream.children].forEach((t,i)=>{t.style.transitionDelay=(i*20)+"ms";
+    t.style.setProperty("--dx",(w/2-(i*11)+40)+"px")});
+  T(()=>{stream.classList.add("collapsed");
+    T(()=>{lump.classList.add("on");cap.textContent="";
+      sub.textContent="$157,808 of net settled cash, as $149,378 today."},650)},380);
+}
+
+/* collections */
+const SCRIPT=[{s:1,r:"ok"},{s:2,r:"ok"},{s:3,r:"soft"},{s:4,r:"ok"},{s:5,r:"hard"},
+  {s:6,r:"ok"},{s:7,r:"ok"},{s:8,r:"ok"}];
+const ticksEl=document.getElementById("ticks");
+function buildTicks(){ticksEl.innerHTML="";
+  for(let i=0;i<26;i++){const d=document.createElement("div");d.className="tk";d.id="tk"+(i+1);ticksEl.appendChild(d)}}
+buildTicks();
+function logE(h){const l=document.getElementById("log");
+  if(l.querySelector(".xs.muted"))l.innerHTML="";
+  const r=document.createElement("div");r.className="ev";r.innerHTML=h;l.prepend(r)}
+const fmt=n=>"$"+Math.round(n).toLocaleString("en-AU");
+function runCollections(){
+  clearT();buildTicks();
+  document.getElementById("log").innerHTML='<div class="xs muted">Waiting for overnight bank results…</div>';
+  document.getElementById("rec").innerHTML='<div class="xs muted">Nothing charged back yet.</div>';
+  let col=0;const per=6069;
+  const set=()=>{document.getElementById("fCol").textContent=fmt(col);
+    document.getElementById("fOut").textContent=fmt(157808-col)};
+  set();
+  SCRIPT.forEach((s,i)=>T(()=>{
+    const tk=document.getElementById("tk"+s.s);
+    if(s.r==="ok"){tk.classList.add("settled");col+=per;set();
+      logE(`<span class="pill p-ok">settled</span><span>Week ${s.s} · ${fmt(per)} collected</span>`)}
+    if(s.r==="soft"){tk.classList.add("retry");
+      logE(`<span class="pill p-retry">retrying</span><span>Week ${s.s} · insufficient-funds — soft, auto-retry T+3</span>`);
+      T(()=>{tk.classList.remove("retry");tk.classList.add("settled");col+=per;set();
+        logE(`<span class="pill p-ok">recovered</span><span>Week ${s.s} · retry settled</span>`)},1300)}
+    if(s.r==="hard"){tk.classList.add("fail");
+      logE(`<span class="pill p-bad">dishonoured</span><span>Week ${s.s} · blocked-by-bank — hard, no retry</span>`);
+      T(()=>{document.getElementById("rec").innerHTML=
+        `<div class="ev"><span class="pill p-bad">recourse</span><span>Week 5 · $34.78 debited from Voltride</span></div>
+         <div class="mono xs muted" style="margin-top:9px">POST /payments · pmt_9Hs02Kd71Lq · nonce set</div>`;
+        logE(`<span class="pill p-bad">recourse</span><span>Charged back to Voltride's own mandate</span>`)},900)}
+  },400+i*700));
+}
+
+/* invest */
+const BOOKS={
+  voltride:{n:"Voltride",mean:.1329,p5:.0249,p1:-.2246,life:3.115},
+  northline:{n:"Northline Gyms",mean:.1636,p5:.0180,p1:-.2596,life:3.115},
+  kerrigan:{n:"Kerrigan Fitout",mean:.2278,p5:.0415,p1:-.1848,life:1.50}
+};
+let sel="voltride",amt=1000;
+function pick(k){sel=k;go("s6");document.getElementById("bName").textContent=BOOKS[k].n;setAmt(amt)}
+const money=n=>(n<0?"−$":"+$")+Math.abs(n).toFixed(2);
+function setAmt(v,btn){
+  amt=Math.max(100,parseInt(v,10)||100);
+  document.getElementById("sl").value=Math.min(50000,amt);
+  document.getElementById("aVal").textContent="$"+amt.toLocaleString("en-AU");
+  const b=BOOKS[sel],y=b.life/12;
+  document.getElementById("pExp").textContent=money(amt*b.mean*y);
+  document.getElementById("pBad").textContent=money(amt*b.p5*y);
+  document.getElementById("pWorst").textContent=money(amt*b.p1*y);
+  document.querySelectorAll(".preset").forEach(p=>p.classList.remove("on"));
+  if(btn)btn.classList.add("on");
+  drawDist();
+}
+function drawDist(){
+  const el=document.getElementById("dist");if(!el)return;
+  const b=BOOKS[sel];
+  // left-skewed density sketch anchored on the real percentiles
+  const W=600,H=140,pts=[];
+  for(let i=0;i<=120;i++){
+    const x=-0.45+(i/120)*0.90;                      // -45% .. +45%
+    const mu=b.mean, s=0.075;
+    let d=Math.exp(-Math.pow((x-mu)/s,2)/2);          // core
+    d+=0.30*Math.exp(-Math.pow((x-b.p1)/0.13,2)/2);   // fat left tail
+    pts.push([(x+0.45)/0.90*W, H-d*H*0.82]);
+  }
+  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const zero=(0+0.45)/0.90*W, mean=(b.mean+0.45)/0.90*W;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <defs><clipPath id="cl"><path d="${path} L${W},${H} L0,${H} Z"/></clipPath></defs>
+    <rect x="0" y="0" width="${zero}" height="${H}" fill="var(--rail)" opacity=".22" clip-path="url(#cl)"/>
+    <rect x="${zero}" y="0" width="${W-zero}" height="${H}" fill="var(--cash)" opacity=".22" clip-path="url(#cl)"/>
+    <path d="${path}" fill="none" stroke="var(--fg2)" stroke-width="1.4"/>
+    <line x1="${zero}" y1="0" x2="${zero}" y2="${H}" stroke="var(--rail)" stroke-width="1.2"/>
+    <line x1="${mean}" y1="0" x2="${mean}" y2="${H}" stroke="var(--cash)" stroke-width="1.2" stroke-dasharray="4 3"/>
+  </svg>`;
+}
+
+/* knowledge check */
+let correct=0,answered={};
+function ans(btn,ok){
+  const box=btn.closest("div[id^=q]");if(answered[box.id])return;
+  answered[box.id]=true;
+  box.querySelectorAll("button").forEach(b=>b.disabled=true);
+  if(ok){btn.style.background="var(--cash)";btn.style.color="#fff";btn.style.borderColor="var(--cash)";correct++}
+  else{btn.style.background="var(--rail-soft)";btn.style.color="#b3303c";btn.style.borderColor="var(--rail)"}
+  if(Object.keys(answered).length===3){
+    const okAll=correct===3;
+    const m=document.getElementById("kcMsg");
+    m.style.display="";m.className="callout "+(okAll?"cash":"warn");
+    m.innerHTML=okAll?"All three correct. You can invest."
+      :"<b>Have another look.</b> Capital is at risk, you cannot withdraw early, and the return is an average — about 1 in 25 outcomes loses money.";
+    const btn2=document.getElementById("kcBtn");
+    btn2.disabled=!okAll;btn2.style.opacity=okAll?1:.4;
+  }
+}
+
+function tab(id,btn){
+  ["t1","t2","t3"].forEach(t=>document.getElementById(t).style.display=t===id?"":"none");
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  document.getElementById(id).querySelectorAll(".fbar i").forEach(x=>{
+    const w=x.dataset.w;x.style.width="0";setTimeout(()=>x.style.width=w,80)});
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight")next();
+  if(e.key==="ArrowLeft")prev();
+  if(e.key.toLowerCase()==="h")document.getElementById("runner").classList.toggle("hide");
+});
+go("s0");
+</script>
+</body>
+</html>
