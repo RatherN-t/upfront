@@ -4,5 +4,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python -m uvicorn main:app --app-dir webapp/api --host 0.0.0.0 --port $PORT"
+# Must go through a shell so $PORT expands (Railway does not expand it itself).
+startCommand = "sh -c 'python -m uvicorn main:app --app-dir webapp/api --host 0.0.0.0 --port ${PORT:-8017}'"
 restartPolicyType = "ON_FAILURE"
