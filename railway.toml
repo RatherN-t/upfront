@@ -1,7 +1,7 @@
-# Railway / Nixpacks — single service: build SPA, run FastAPI.
+# Railway — Docker build so Node + Python are both available.
 [build]
-builder = "NIXPACKS"
-buildCommand = "cd webapp/frontend && npm ci && npm run build && cd ../.. && pip install -r requirements.txt"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python -m uvicorn main:app --app-dir webapp/api --host 0.0.0.0 --port $PORT"

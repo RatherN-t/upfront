@@ -1,0 +1,14 @@
+.git
+.venv
+**/node_modules
+**/__pycache__
+*.pyc
+*.db
+.env
+.playwright-mcp
+.agents
+docs
+prototype.html
+signin-clarity.png
+**/dist
+.DS_Store
