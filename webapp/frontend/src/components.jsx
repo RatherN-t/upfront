@@ -1,4 +1,4 @@
-import { money, pct, scoreClass } from './api'
+import { money, ordinal, pct, scoreClass } from './api'
 import {
   Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -158,14 +158,14 @@ export function DistributionChart({ curve }) {
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#e7ecee" vertical={false} />
-            <XAxis dataKey="p" tickFormatter={(v) => `${v}th`}
+            <XAxis dataKey="p" tickFormatter={ordinal}
                    ticks={[1, 5, 10, 25, 50, 75, 99]}
                    tick={{ fontSize: 11, fill: '#5b6b78' }} stroke="#e7ecee" />
             <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`}
                    tick={{ fontSize: 11, fill: '#5b6b78' }} stroke="#e7ecee" />
             <Tooltip
               formatter={(v) => [`${Number(v).toFixed(2)}% p.a.`, 'return']}
-              labelFormatter={(v) => `${v}th percentile — ${v}% of runs are worse`}
+              labelFormatter={(v) => `${ordinal(v)} percentile — ${v}% of runs are worse`}
               contentStyle={{
                 borderRadius: 10, border: '1px solid #e7ecee',
                 fontSize: 12, fontFamily: 'var(--ui)',
@@ -180,7 +180,7 @@ export function DistributionChart({ curve }) {
       <p className="small muted" style={{ marginTop: 10 }}>
         Worst simulated run <span className="mono">{worst.value.toFixed(1)}%</span>.
         {crossing
-          ? ` Breaks even around the ${crossing.p}th percentile — below that, you lose money.`
+          ? ` Breaks even around the ${ordinal(crossing.p)} percentile — below that, you lose money.`
           : ' Every simulated run lost money.'}
       </p>
     </div>

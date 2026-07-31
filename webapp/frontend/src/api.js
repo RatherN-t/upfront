@@ -55,6 +55,13 @@ export const money = (cents, opts = {}) =>
 
 export const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`
 
+/** 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th". */
+export function ordinal(n) {
+  const rem100 = n % 100
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`
+  return `${n}${['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`
+}
+
 export const scoreClass = (grade) =>
   grade === 'A' || grade === 'A-' ? '' : grade === 'C' ? 'c' : 'b'
 

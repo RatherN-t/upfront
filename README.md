@@ -11,6 +11,27 @@ Hackathon prototype. Test mode only. No real money moves.
 
 ## Quick start
 
+**The running product** — a business onboards, gets underwritten and opens a
+funding round; investors browse rounds and invest:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install fastapi "uvicorn[standard]" httpx
+(cd webapp/frontend && npm install)
+
+# terminal 1
+cd webapp/api && ../../.venv/bin/python -m uvicorn main:app --port 8017
+# terminal 2
+cd webapp/frontend && npm run dev          # -> http://localhost:5173
+
+.venv/bin/python webapp/seed_demo.py       # three businesses, rounds open
+```
+
+Full detail, including the live-vs-simulated distinction, in
+`webapp/README.md`.
+
+**The engine on its own:**
+
 ```bash
 python3 tools/check.py check              # figures + tests + guards
 python3 tools/check.py install-git-hooks  # once per checkout
@@ -20,7 +41,7 @@ python3 run.py        # full underwriting report for every book
 python3 stress.py     # portfolio distribution and sensitivities
 ```
 
-Open `prototype.html` in a browser for the product walkthrough.
+`prototype.html` is the original static walkthrough, kept for the pitch.
 
 To connect to a real Pinch sandbox and price a live book end to end:
 
@@ -30,17 +51,22 @@ export PINCH_SECRET=...
 python3 integration/seed_sandbox.py
 ```
 
+Without those two variables the app still runs, against an in-process
+simulator that is labelled as such everywhere it appears.
+`docs/10-get-credentials-now.md` is the click-path for getting them.
+
 ## Layout
 
 ```
 CLAUDE.md              agent operating instructions - read this first
 docs/                  architecture, math, risk, regulatory, setup
+webapp/                the running product: FastAPI + SQLite, React frontend
 integration/           live Pinch client, adapter, sandbox seeder, adapter tests
 engine/                pricing, fee model, portfolio risk, mock books, tests
 tools/                 check harness and guards
-.agents/skills/        trace-figure, grill-pricing, pinch-call, demo-check
+.agents/skills/        trace-figure, grill-pricing, pinch-api, demo-check
 .githooks/pre-commit   delegates to tools/check.py pre-commit
-prototype.html         product visualisation
+prototype.html         static product walkthrough (pre-dates webapp/)
 ```
 
 ## The two rules
