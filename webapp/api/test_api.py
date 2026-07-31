@@ -389,6 +389,112 @@ class TestSecurity(unittest.TestCase):
         self.assertIn("RuntimeError", detail, "error class is still useful")
 
 
+class TestConnectExistingAccount(unittest.TestCase):
+    """A business that already trades on Pinch connects its own account.
+
+    This is the path that reads a real book — real customers, real mandates,
+    and real settled history — rather than creating an empty merchant.
+    """
+
+    def setUp(self):
+        db.reset_db()
+        main.GATEWAY = SimulatedGateway()
+        self.client = TestClient(main.app)
+        self.client.post("/api/business/start",
+                         json={"name": "Voltride", "email": "v@x.test"})
+
+    def _connect(self, app_id, secret):
+        return self.client.post("/api/business/connect", json={
+            "app_id": app_id, "secret": secret,
+            "sector": "E-bike subscription rentals",
+            "asset_class": "contract"})
+
+    def test_live_keys_are_refused(self):
+        r = self._connect("app_abc123", "sk_live_abc123")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("LIVE", r.json()["detail"])
+
+    def test_mismatched_key_pair_is_named(self):
+        r = self._connect("app_abc123", "sk_test_abc123")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Mismatched", r.json()["detail"])
+
+    def test_requires_a_business_session(self):
+        anon = TestClient(main.app)
+        r = anon.post("/api/business/connect", json={
+            "app_id": "app_test_x", "secret": "sk_test_x",
+            "sector": "x", "asset_class": "contract"})
+        self.assertEqual(r.status_code, 401)
+
+    def test_credentials_are_never_returned_to_the_client(self):
+        """Stored keys belong to someone else's Pinch account. No endpoint
+        may hand them back, however convenient."""
+        db.update_business(1, connection_type="connected",
+                           pinch_app_id="app_test_secret_id",
+                           pinch_secret="sk_test_do_not_leak")
+        body = self.client.get("/api/business/me").text
+        self.assertNotIn("sk_test_do_not_leak", body)
+        self.assertNotIn("app_test_secret_id", body)
+        self.assertNotIn("pinch_secret", body)
+
+    def test_empty_account_is_rejected_with_a_reason(self):
+        """Authenticating is not enough — an account with no subscriptions
+        and no history has nothing to underwrite, and saying so is more use
+        than a book priced off nothing."""
+        class EmptyGateway:
+            mode = "connected"
+
+            @classmethod
+            def from_credentials(cls, app_id, secret):
+                return cls()
+
+            def verify(self):
+                return {"ok": True, "payers": 0, "subscriptions": 0,
+                        "processed_payments": 0}
+
+        original = main.ConnectedGateway
+        main.ConnectedGateway = EmptyGateway
+        try:
+            r = self._connect("app_test_x", "sk_test_x")
+        finally:
+            main.ConnectedGateway = original
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("nothing to underwrite", r.json()["detail"])
+
+    def test_bad_credentials_do_not_echo_upstream_detail(self):
+        class BoomGateway:
+            mode = "connected"
+
+            @classmethod
+            def from_credentials(cls, app_id, secret):
+                return cls()
+
+            def verify(self):
+                raise RuntimeError(
+                    "HTTP 401 {'secret':'sk_test_leaked','acct':'mch_private'}")
+
+        original = main.ConnectedGateway
+        main.ConnectedGateway = BoomGateway
+        try:
+            r = self._connect("app_test_x", "sk_test_x")
+        finally:
+            main.ConnectedGateway = original
+        self.assertEqual(r.status_code, 400)
+        detail = r.json()["detail"]
+        for leak in ("sk_test_leaked", "mch_private", "HTTP 401"):
+            self.assertNotIn(leak, detail)
+        self.assertIn("api-keys", detail, "must still be actionable")
+
+
+class TestSelfScope(unittest.TestCase):
+    def test_as_self_sends_no_current_merchant(self):
+        sys.path.insert(0, str(_HERE.parent.parent / "integration"))
+        from pinch_client import PinchClient
+        pc = PinchClient(app_id="app_test_x", secret="sk_test_x")
+        self.assertIsNone(pc.as_self().merchant_id)
+        self.assertEqual(pc.as_merchant("mch_abc").merchant_id, "mch_abc")
+
+
 class TestSummarise(unittest.TestCase):
     def test_empty_distribution_is_zeroed_not_missing(self):
         r = summarise_returns({})

@@ -25,6 +25,8 @@ export const api = {
   businessMe: () => call('/business/me'),
   businessOnboard: (payload) =>
     call('/business/onboard', { method: 'POST', body: payload }),
+  connectAccount: (payload) =>
+    call('/business/connect', { method: 'POST', body: payload }),
   openRound: (deadline_days, min_ticket_dollars) =>
     call('/business/open-round', {
       method: 'POST',

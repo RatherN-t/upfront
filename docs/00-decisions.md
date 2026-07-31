@@ -46,3 +46,25 @@ No real SME ledger is obtainable or needed. Every parameter traces to
 ### D10 — Stay in Pinch test mode
 No live compliance for the hackathon. Build the compliance-status panel against
 the three flags instead.
+
+### D11 — Two ways in: connect an existing Pinch account, or be created as one
+A business that already trades on Pinch connects its own account with its own
+Application keys, and Upfront authenticates *as them* (`PinchClient.as_self()`,
+no `Current-Merchant`) and reads their real book. A business new to Pinch still
+gets a managed merchant created under Upfront.
+
+D1 is unchanged for the second case and does not cover the first. The connected
+path is the one that reads a genuinely measured book — real customers, real
+mandates, and real settled history — which is also the only way past the
+test-mode settlement batch that leaves a freshly seeded merchant with no
+payment history for days.
+
+**Reverses if** Pinch ships a partner OAuth flow, which would be strictly
+better than asking a business to paste API keys. The application record already
+has a Redirect URIs field, so this may already be possible and is worth asking
+a mentor about.
+
+Connecting is **read-only**: payers, plans, subscriptions, payments, transfers.
+Upfront never writes to a connected account, and never fabricates history into
+one. Storing another business's secret is acceptable only in test mode; real
+deployment needs OAuth or per-connection encryption at rest.

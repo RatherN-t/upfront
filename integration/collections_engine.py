@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -263,6 +264,11 @@ def process_week(week: Week, *, outcome: str, dishonour_code: str = "") -> Decis
     return Decision(week.transition(WeekState.RECOURSE_FIRED), "recourse")
 
 
+# Guards the check-and-insert in handle_event. See its docstring for why a
+# plain `if id in seen: seen.add(id)` is not safe under concurrent delivery.
+_dedupe_lock = threading.Lock()
+
+
 # ---------------------------------------------------------------------------
 # 6. handle_event — webhook entrypoint: verify, then dedupe, then act
 
@@ -281,6 +287,18 @@ def handle_event(raw_body: bytes, signature_header: str, secret: str,
     `seen_event_ids` is mutated in place (id added on first sight) so the
     caller's dedupe store persists across calls without this function owning
     storage.
+
+    The membership test and the insert are done under a lock. Pinch delivers
+    concurrently and retries on timeout, so two threads can hold the same
+    `evt_` at once; testing and then inserting as two separate statements
+    lets both pass the test before either inserts, and both go on to fire a
+    retry or a recourse debit. The GIL does not help — it can switch between
+    the two statements.
+
+    A single process-wide lock is enough here and deliberately coarse: this
+    guards a set membership check, not I/O. **A multi-process deployment
+    needs a unique constraint on the event id in the database instead** — a
+    lock in one process says nothing about another.
     """
     verify_webhook(secret, signature_header, raw_body)  # raises on bad signature
 
@@ -289,7 +307,9 @@ def handle_event(raw_body: bytes, signature_header: str, secret: str,
     event_id = event.get("id", "")
     if not event_id.startswith("evt_"):
         raise ValueError(f"event missing evt_ id: {event!r}")
-    if event_id in seen_event_ids:
-        return None
-    seen_event_ids.add(event_id)
+
+    with _dedupe_lock:
+        if event_id in seen_event_ids:
+            return None
+        seen_event_ids.add(event_id)
     return event

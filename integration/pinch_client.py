@@ -343,13 +343,32 @@ class PinchClient:
             raise ValueError(f"expected mch_ id, got {merchant_id!r}")
         return MerchantScope(self, merchant_id)
 
+    def as_self(self) -> "MerchantScope":
+        """Scope over the credentials' OWN account — no Current-Merchant.
+
+        For a business that already has its own Pinch account and connects it
+        with its own Application keys. Their credentials *are* their merchant,
+        so sending Current-Merchant would be wrong (and would name a merchant
+        they do not own).
+
+        Named explicitly so the header can still never be dropped by
+        accident: you get a scope from `as_merchant()` or from `as_self()`,
+        and choosing self is a deliberate statement about whose data you are
+        reading, not an omission.
+        """
+        return MerchantScope(self, None)
+
 
 @dataclass
 class MerchantScope:
-    """Every call here carries Current-Merchant. There is no other way to reach
-    a managed-merchant endpoint, so the header can never be forgotten."""
+    """Every call here carries Current-Merchant, unless `merchant_id` is None,
+    which means "this credential set's own account" and is only reachable via
+    the explicitly-named `PinchClient.as_self()`.
+
+    There is no other way to reach a managed-merchant endpoint, so the header
+    can never be forgotten — only deliberately declined."""
     client: PinchClient
-    merchant_id: str
+    merchant_id: Optional[str]
     time_travel: Optional[str] = None
 
     def at(self, iso_datetime: str) -> "MerchantScope":

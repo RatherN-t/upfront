@@ -57,7 +57,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import db                                              # noqa: E402
 from pinch_gateway import (                             # noqa: E402
-    BookProfile, GatewayError, build_gateway)
+    BookProfile, ConnectedGateway, GatewayError, build_gateway)
 from underwriting import (                              # noqa: E402
     deal_fields, public_pricing, underwrite)
 
@@ -129,6 +129,14 @@ class Onboarding(BaseModel):
     cadence: str = Field(pattern="^(weekly|fortnightly|monthly)$")
     customers: int = Field(gt=0, le=400)
     term_weeks: int = Field(default=26, ge=4, le=26)
+
+
+class ConnectAccount(BaseModel):
+    """Credentials for a business that already trades on Pinch."""
+    app_id: str = Field(min_length=6, max_length=200)
+    secret: str = Field(min_length=6, max_length=400)
+    sector: str = Field(min_length=1, max_length=120)
+    asset_class: str = Field(pattern="^(contract|invoice)$")
 
 
 class OpenRound(BaseModel):
@@ -206,6 +214,10 @@ def business_me(upfront_session: Optional[str] = Cookie(None)) -> dict:
         "sector": b["sector"], "asset_class": b["asset_class"],
         "status": b["status"], "status_detail": b["status_detail"],
         "mch_id": b["mch_id"], "pinch_mode": b["pinch_mode"],
+        "connection_type": b["connection_type"],
+        # pinch_app_id / pinch_secret are deliberately NOT returned. They are
+        # another business's API credentials; nothing outside this process
+        # needs them.
         "onboarding": json.loads(b["onboarding"] or "{}"),
         "pricing": json.loads(b["pricing"] or "{}"),
         "deals": deals,
@@ -287,6 +299,90 @@ def _run_onboarding(business_id: int, profile: BookProfile,
                                pricing=json.dumps(public_pricing(pricing)))
             return
 
+        db.update_business(business_id, status="ready", status_detail="",
+                           pricing=json.dumps(public_pricing(pricing)))
+    except Exception as exc:                      # noqa: BLE001
+        db.update_business(business_id, status="failed",
+                           status_detail=_safe_error(exc))
+
+
+@app.post("/api/business/connect")
+def business_connect(body: ConnectAccount,
+                     upfront_session: Optional[str] = Cookie(None)) -> dict:
+    """Connect a business's EXISTING Pinch account and underwrite it.
+
+    The managed-merchant path creates a new, empty merchant — right for a
+    business new to Pinch, useless for one that already trades on it, because
+    their customers, mandates and settled history are all on their own
+    account. Here they supply their own Application keys and Upfront reads
+    their real book.
+
+    Credentials are verified before anything is stored, so a bad paste fails
+    where the user can still fix it. They are stored server-side and never
+    returned by any endpoint.
+    """
+    sess = _require("business", upfront_session)
+    b = db.get_business(sess["owner_id"])
+    if b is None:
+        raise HTTPException(404, "business not found")
+    if b["status"] in ("creating_merchant", "seeding", "underwriting"):
+        raise HTTPException(409, "onboarding already in progress")
+
+    app_id, secret = body.app_id.strip(), body.secret.strip()
+    try:
+        gateway = ConnectedGateway.from_credentials(app_id, secret)
+        summary = gateway.verify()
+    except GatewayError as exc:
+        raise HTTPException(400, str(exc))
+    except Exception as exc:                      # noqa: BLE001
+        # Wrong keys are the common case and the message must be usable, but
+        # the upstream body can carry account detail, so it is not echoed.
+        traceback.print_exc()
+        raise HTTPException(
+            400, "Pinch rejected those credentials. Check you copied the "
+                 "Development Application ID and Secret from "
+                 "web.getpinch.com.au/api-keys.")
+
+    if not summary["subscriptions"] and not summary["processed_payments"]:
+        raise HTTPException(
+            400, "That account has no subscriptions and no payment history, "
+                 "so there is nothing to underwrite yet.")
+
+    db.update_business(
+        sess["owner_id"], sector=body.sector, asset_class=body.asset_class,
+        connection_type="connected", pinch_app_id=app_id, pinch_secret=secret,
+        pinch_mode="connected", status="underwriting", status_detail="",
+        onboarding=json.dumps({"sector": body.sector,
+                               "asset_class": body.asset_class,
+                               "connected": True}))
+
+    threading.Thread(target=_run_connected_underwriting,
+                     args=(sess["owner_id"],), daemon=True).start()
+    return {"status": "underwriting", "account": summary}
+
+
+def _run_connected_underwriting(business_id: int) -> None:
+    """Pull and price a connected account. Reads only — never writes to
+    someone else's Pinch account."""
+    try:
+        b = db.get_business(business_id)
+        gateway = ConnectedGateway.from_credentials(
+            b["pinch_app_id"], b["pinch_secret"])
+        profile = BookProfile(
+            name=b["name"], sector=b["sector"] or "Connected account",
+            asset_class=b["asset_class"] or "contract",
+            # Ticket size and cadence are read off the real book by the
+            # engine's scanner, so the profile only supplies labels and the
+            # default risk prior here.
+            ticket_c=1000, cadence="weekly", customers=1,
+            seed_key=b["email"])
+        pull = gateway.pull_book(b["mch_id"] or "connected", profile)
+        pricing = underwrite(pull, profile)
+        if not pricing.get("fundable"):
+            db.update_business(business_id, status="not_fundable",
+                               status_detail=pricing.get("reason", ""),
+                               pricing=json.dumps(public_pricing(pricing)))
+            return
         db.update_business(business_id, status="ready", status_detail="",
                            pricing=json.dumps(public_pricing(pricing)))
     except Exception as exc:                      # noqa: BLE001

@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS businesses (
     status       TEXT NOT NULL DEFAULT 'new',
     status_detail TEXT NOT NULL DEFAULT '',
     onboarding   TEXT NOT NULL DEFAULT '{}',
+    connection_type TEXT NOT NULL DEFAULT 'managed',
+    pinch_app_id TEXT,
+    pinch_secret TEXT,
     pricing      TEXT NOT NULL DEFAULT '{}',
     created_at   TEXT NOT NULL
 );
@@ -128,10 +131,27 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Columns added after the first schema shipped. SQLite has no
+# ADD COLUMN IF NOT EXISTS, so they are applied by inspection.
+_MIGRATIONS = {
+    "businesses": {
+        "connection_type": "TEXT NOT NULL DEFAULT 'managed'",
+        "pinch_app_id": "TEXT",
+        "pinch_secret": "TEXT",
+    },
+}
+
+
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with connect() as c:
         c.executescript(SCHEMA)
+        for table, cols in _MIGRATIONS.items():
+            existing = {r["name"] for r in
+                        c.execute(f"PRAGMA table_info({table})").fetchall()}
+            for name, decl in cols.items():
+                if name not in existing:
+                    c.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
 
 def reset_db() -> None:

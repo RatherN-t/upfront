@@ -307,3 +307,35 @@ class TestRecourseMoneyType(unittest.TestCase):
             fire_recourse(Recorder(), recourse_payer_id="pyr_1", amount_c=True,
                           transaction_date="2026-08-05", deal_id="dl_1",
                           reason="hard-fail")
+
+
+class TestDedupeUnderConcurrency(unittest.TestCase):
+    """Pinch delivers concurrently and retries on timeout, so the same evt_
+    can be in flight twice. Exactly one delivery may be accepted — the other
+    must be dropped, or a second debit goes out."""
+
+    def test_same_event_delivered_concurrently_is_accepted_once(self):
+        import hashlib as _h, hmac as _hm, threading as _t, time as _time
+        secret = "shhh123"
+        body = b'{"id":"evt_race","type":"bank-results"}'
+        ts = int(_time.time())
+        sig = _hm.new(secret.encode(), f"{ts}.".encode() + body,
+                      _h.sha256).hexdigest()
+        header = f"t={ts},v2={sig}"
+
+        seen, accepted, barrier = set(), [], _t.Barrier(8)
+
+        def deliver():
+            barrier.wait()          # maximise overlap on the check-and-insert
+            if handle_event(body, header, secret, seen) is not None:
+                accepted.append(1)
+
+        threads = [_t.Thread(target=deliver) for _ in range(8)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+
+        self.assertEqual(sum(accepted), 1,
+                         f"{sum(accepted)} deliveries accepted; a duplicate "
+                         "event would fire a second retry or recourse debit")

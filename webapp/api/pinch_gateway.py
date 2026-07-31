@@ -442,6 +442,101 @@ class LiveGateway:
 
 
 # ---------------------------------------------------------------------------
+# Connected gateway — a business brings its OWN Pinch account
+# ---------------------------------------------------------------------------
+
+class ConnectedGateway:
+    """Reads a business's real book using the business's own credentials.
+
+    The managed-merchant path creates a brand-new merchant under Upfront,
+    which is right for a business that is new to Pinch and wrong for one that
+    already trades on it: their customers, mandates and — the part that
+    matters — their real settled payment history all live on their own
+    account, and a new managed merchant has none of it.
+
+    So here the business supplies its own Application ID and Secret, and
+    Upfront authenticates *as them* and reads their account directly. No
+    Current-Merchant header, because their credentials already are their
+    merchant; that is what `as_self()` exists for.
+
+    This is also the only path that gets a genuinely measured book. Pinch's
+    test-mode settlement batch means a merchant we seed ourselves has no
+    settled payments for days, but a business that has actually been trading
+    already does — so the bad-debt scanner reads real behaviour and the
+    credibility weighting stops discounting the book.
+
+    Nothing here writes. Connecting reads payers, plans, subscriptions,
+    payments and transfers, and nothing else — a business connecting its
+    live account to a hackathon prototype should not be handing over the
+    ability to move its money.
+    """
+
+    mode = "connected"
+
+    def __init__(self, client: Any) -> None:
+        self.client = client
+
+    @classmethod
+    def from_credentials(cls, app_id: str, secret: str) -> "ConnectedGateway":
+        from pinch_client import PinchClient
+        if secret.startswith("sk_live_") or app_id.startswith("app_live_"):
+            raise GatewayError(
+                "Those are LIVE Pinch keys. Use the Development keys "
+                "(app_test_… / sk_test_…) — this prototype is test mode only.")
+        if secret.startswith("sk_test_") and not app_id.startswith("app_test_"):
+            raise GatewayError(
+                "Mismatched keys: the Application ID is a Live one but the "
+                "Secret is a test key. Both must come from the Development "
+                "Keys block.")
+        return cls(PinchClient(app_id=app_id, secret=secret, live=False))
+
+    def verify(self) -> dict:
+        """Prove the credentials work and report what is on the account.
+
+        Called before anything is stored, so a bad paste fails at the point
+        the user can still fix it rather than halfway through onboarding.
+        """
+        self.client._ensure_token()
+        scope = self.client.as_self()
+        payers = scope.get_payers()
+        subs = scope.get_subscriptions()
+        processed = scope.get_processed_payments()
+        return {
+            "ok": True,
+            "payers": len(payers),
+            "subscriptions": len(subs),
+            "processed_payments": len(processed),
+        }
+
+    def create_managed_merchant(self, profile: BookProfile, **_: Any) -> dict:
+        raise GatewayError(
+            "A connected account is not created by Upfront — it already "
+            "exists. Nothing to create.")
+
+    def seed_book(self, mch_id: str, profile: BookProfile) -> dict:
+        # Never write fabricated history into someone's real account.
+        return {"seeded": False, "mode": self.mode,
+                "reason": "connected accounts are read as-is"}
+
+    def pull_book(self, mch_id: str, profile: Optional[BookProfile] = None) -> dict:
+        scope = self.client.as_self()
+        pull = scope.pull_book()
+        pull["_mode"] = self.mode
+        pull["_scope"] = scope
+        # Whatever the account actually holds. If they have never settled a
+        # payment the book is thin, and the credibility weighting prices that
+        # honestly rather than standing anything in.
+        pull["_history_source"] = "pinch"
+        return pull
+
+    def create_payment_link(self, *, amount_c: int, description: str,
+                            metadata: Optional[dict] = None) -> dict:
+        raise GatewayError(
+            "Investor money-in belongs on Upfront's own account, not the "
+            "connected business's.")
+
+
+# ---------------------------------------------------------------------------
 # selection
 # ---------------------------------------------------------------------------
 
