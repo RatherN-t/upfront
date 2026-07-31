@@ -43,7 +43,9 @@ SOFT_CODES = ["insufficient-funds", "insufficient-funds", "temporary-problem"]
 # live path seeds a smaller representative history and reads it back. The
 # forward schedule comes from a Plan, which is a handful of calls regardless.
 LIVE_SEED_PAYERS = 12
-LIVE_SEED_WEEKS = 6
+# Pinch rejects a transactionDate more than 30 days in the past, so the
+# back-dated history cannot reach further than four weekly cycles.
+LIVE_SEED_WEEKS = 4
 
 
 class GatewayError(RuntimeError):

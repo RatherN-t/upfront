@@ -172,6 +172,11 @@ def public_pricing(pricing: dict) -> dict:
             "gross_dishonour_rate": scan["gross_dishonour_rate"],
             "cure_rate": scan["cure_rate"],
             "net_loss_rate": scan["net_loss_rate"],
+            # How much of net_loss_rate is measured vs assumed. The UI must
+            # not present an assumed rate as an observed one.
+            "credibility": scan.get("credibility", 1.0),
+            "observed_net_loss_rate": scan.get("observed_net_loss_rate",
+                                               scan["net_loss_rate"]),
             "hard_fail_share": scan["hard_fail_share"],
             "top_payer_concentration": scan["top_payer_concentration"],
             "distinct_payers": scan["distinct_payers"],

@@ -100,25 +100,49 @@ export function FeeDrag({ pricing }) {
   )
 }
 
-/** Bad-debt scanner output: what the payment rail actually shows. */
+/**
+ * Bad-debt scanner output: what the payment rail actually shows.
+ *
+ * When there is little or no settled history the loss rate is mostly assumed
+ * rather than measured, and this says so. Rendering an assumed 4% as though
+ * it were observed — or worse, rendering an unobserved 0% as a clean book —
+ * is the exact failure the engine's credibility weighting exists to prevent.
+ */
 export function BookScan({ scan }) {
+  const cred = scan.credibility === undefined ? 1 : scan.credibility
+  const thin = cred < 0.99
+
   return (
     <div className="card">
       <h3>What the rail shows</h3>
-      <p className="small muted" style={{ margin: '8px 0 16px' }}>
-        Underwritten from {scan.attempts.toLocaleString()} real payment
-        attempts across {scan.distinct_payers} customers — not a P&amp;L
-        someone typed in.
-      </p>
+      {thin ? (
+        <p className="small muted" style={{ margin: '8px 0 16px' }}>
+          Only {scan.attempts.toLocaleString()} settled payment attempts on
+          this account so far — not enough to measure a failure rate. The loss
+          figure below is therefore mostly <strong>assumed</strong>, and this
+          book is priced as the weakest one we would still fund until its
+          history builds.
+        </p>
+      ) : (
+        <p className="small muted" style={{ margin: '8px 0 16px' }}>
+          Underwritten from {scan.attempts.toLocaleString()} real payment
+          attempts across {scan.distinct_payers} customers — not a P&amp;L
+          someone typed in.
+        </p>
+      )}
       <div className="grid four">
         <Stat label="Gross dishonour" value={pct(scan.gross_dishonour_rate)}
-              small sub="of attempted value" />
-        <Stat label="Cure rate" value={pct(scan.cure_rate, 1)} small tone="pos"
-              sub="recovered on retry" />
-        <Stat label="Net bad debt" value={pct(scan.net_loss_rate)} small
-              sub="what actually never lands" />
-        <Stat label="Top payer" value={pct(scan.top_payer_concentration, 1)}
-              small sub="concentration" />
+              small sub={thin ? 'too little data' : 'of attempted value'} />
+        <Stat label="Cure rate" value={pct(scan.cure_rate, 1)} small
+              tone={thin ? '' : 'pos'}
+              sub={thin ? 'too little data' : 'recovered on retry'} />
+        <Stat label={thin ? 'Assumed bad debt' : 'Net bad debt'}
+              value={pct(scan.net_loss_rate)} small
+              tone={thin ? 'neg' : ''}
+              sub={thin ? 'not measured' : 'what actually never lands'} />
+        <Stat label="Evidence" value={`${Math.round(cred * 100)}%`} small
+              tone={thin ? 'neg' : 'pos'}
+              sub={thin ? 'thin history' : 'fully credible'} />
       </div>
     </div>
   )

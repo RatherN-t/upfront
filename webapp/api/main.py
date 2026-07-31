@@ -247,6 +247,14 @@ def _run_onboarding(business_id: int, profile: BookProfile,
         b = db.get_business(business_id)
         mch = b["mch_id"] if reuse else None
 
+        # A merchant that exists but never finished seeding must be seeded
+        # again, otherwise a failure part-way through onboarding leaves the
+        # business permanently stuck: the retry sees an mch_id, skips
+        # seeding, and re-prices an empty book forever.
+        if mch and not json.loads(b["pricing"] or "{}").get("fundable"):
+            db.update_business(business_id, status="seeding")
+            GATEWAY.seed_book(mch, profile)
+
         if not mch:
             m = GATEWAY.create_managed_merchant(profile, email=b["email"])
             mch = m["id"]
