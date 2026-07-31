@@ -1,0 +1,22 @@
+- generic [ref=f19e2]:
+  - generic [ref=f19e3]: Upfront
+  - generic [ref=f19e6]:
+    - generic [ref=f19e23]:
+      - strong [ref=f19e24]: "Pinch: LIVE (test mode)"
+      - generic [ref=f19e25]: Live Pinch test-mode API calls.
+    - generic [ref=f19e51]:
+      - button "← Back" [ref=f19e52] [cursor=pointer]
+      - generic [ref=f19e53]:
+        - heading "Your business" [level=2] [ref=f19e54]
+        - paragraph [ref=f19e55]:
+          - text: No password — this is a test-mode prototype. Using an email that's already onboarded resumes that business exactly where it left off.
+          - strong [ref=f19e56]: Use a new email
+          - text: to see the choice between connecting a Pinch account and starting fresh.
+        - generic [ref=f19e57]:
+          - generic [ref=f19e58]:
+            - generic [ref=f19e59]: Company name
+            - textbox "Your Company Pty Ltd" [ref=f19e60]
+          - generic [ref=f19e61]:
+            - generic [ref=f19e62]: Email
+            - textbox "you@yourcompany.example" [ref=f19e63]
+          - button "Continue" [ref=f19e64] [cursor=pointer]

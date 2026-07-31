@@ -75,19 +75,25 @@ function SignIn({ role, onDone, onBack }) {
         <h2>{business ? 'Your business' : 'Your details'}</h2>
         <p className="small muted" style={{ margin: '8px 0 18px' }}>
           No password — this is a test-mode prototype.
+          {business && (
+            <> Using an email that's already onboarded resumes that business
+            exactly where it left off. <strong>Use a new email</strong> to see
+            the choice between connecting a Pinch account and starting
+            fresh.</>
+          )}
         </p>
         <ErrorNote>{err}</ErrorNote>
         <form onSubmit={submit}>
           <div className="field">
             <label>{business ? 'Company name' : 'Your name'}</label>
             <input value={name} onChange={(e) => setName(e.target.value)}
-                   required placeholder={business ? 'Voltride Pty Ltd' : 'Ari'} />
+                   required placeholder={business ? 'Your Company Pty Ltd' : 'Ari'} />
           </div>
           <div className="field">
             <label>Email</label>
             <input type="email" value={email} required
                    onChange={(e) => setEmail(e.target.value)}
-                   placeholder={business ? 'ops@voltride.example' : 'ari@example.com'} />
+                   placeholder={business ? 'you@yourcompany.example' : 'ari@example.com'} />
           </div>
           <button className="cash wide" disabled={busy}>
             {busy ? 'Starting…' : 'Continue'}
