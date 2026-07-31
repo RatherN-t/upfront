@@ -50,8 +50,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Cookie, FastAPI, HTTPException, Response
+from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -64,11 +66,18 @@ from underwriting import (                              # noqa: E402
 
 app = FastAPI(title="Upfront", version="1.0")
 
-# The Vite dev server runs on a different port; credentials are required
-# because the session is a cookie.
+# Dev: Vite on :5173. Prod: same origin as the API (static files below).
+_CORS_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "UPFRONT_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -76,11 +85,23 @@ app.add_middleware(
 
 GATEWAY = build_gateway()
 SESSION_COOKIE = "upfront_session"
+# Secure cookies whenever we are not clearly on local HTTP.
+_COOKIE_SECURE = os.environ.get("UPFRONT_COOKIE_SECURE", "").lower() in (
+    "1", "true", "yes",
+) or os.environ.get("RAILWAY_ENVIRONMENT") is not None \
+  or os.environ.get("RENDER") is not None
 
 # Where the investor lands after Pinch's hosted checkout. Pinch appends
 # ?paymentLinkId=...&paymentId=... to whatever is passed here.
 FRONTEND_BASE_URL = os.environ.get("UPFRONT_FRONTEND_URL",
                                    "http://localhost:5173")
+
+_FRONTEND_DIST = Path(
+    os.environ.get(
+        "UPFRONT_FRONTEND_DIST",
+        Path(__file__).resolve().parent.parent / "frontend" / "dist",
+    )
+)
 
 
 @app.on_event("startup")
@@ -100,8 +121,12 @@ def _require(role: str, token: Optional[str]):
 
 
 def _set_cookie(resp: Response, token: str) -> None:
-    resp.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax",
-                    max_age=60 * 60 * db.SESSION_TTL_HOURS)
+    resp.set_cookie(
+        SESSION_COOKIE, token,
+        httponly=True, samesite="lax",
+        secure=_COOKIE_SECURE,
+        max_age=60 * 60 * db.SESSION_TTL_HOURS,
+    )
 
 
 def _safe_error(exc: Exception) -> str:
@@ -550,3 +575,26 @@ def invest(body: Invest,
         "payment_link": {"id": link.get("id"), "url": link.get("url")},
         "pinch_mode": GATEWAY.mode,
     }
+
+
+# ---------------------------------------------------------------------------
+# SPA — built frontend, same origin as /api (required for the session cookie)
+# ---------------------------------------------------------------------------
+
+if _FRONTEND_DIST.is_dir():
+    _assets = _FRONTEND_DIST / "assets"
+    if _assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=_assets), name="assets")
+
+    @app.get("/{full_path:path}")
+    def spa(full_path: str):
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(404, "not found")
+        candidate = (_FRONTEND_DIST / full_path).resolve()
+        try:
+            candidate.relative_to(_FRONTEND_DIST.resolve())
+        except ValueError:
+            return FileResponse(_FRONTEND_DIST / "index.html")
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(_FRONTEND_DIST / "index.html")

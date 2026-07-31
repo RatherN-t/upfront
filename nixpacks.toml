@@ -1,0 +1,15 @@
+# https://nixpacks.com/docs/configuration/file
+[phases.setup]
+nixPkgs = ["nodejs_22", "python312"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "cd webapp/frontend && npm ci",
+]
+
+[phases.build]
+cmds = ["cd webapp/frontend && npm run build"]
+
+[start]
+cmd = "python -m uvicorn main:app --app-dir webapp/api --host 0.0.0.0 --port ${PORT:-8017}"
