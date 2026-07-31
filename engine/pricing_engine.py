@@ -164,6 +164,30 @@ class PricingPolicy:
 CONCENTRATION_CAP = 0.20
 MAX_WEEKS_OUT = 26
 
+# Below this many observed attempts, a measured dishonour rate is noise. A
+# book with no history would otherwise score a perfect zero loss rate and
+# grade A — absence of evidence read as evidence of quality, which is the
+# single easiest way for this engine to be badly wrong about a new merchant.
+FULL_CREDIBILITY_ATTEMPTS = 300
+
+# What we assume instead when there is nothing to measure. Set at the top of
+# the engine's own worst grade band (`grade_from_scan` puts >=4% in the
+# bottom bucket), so an unobserved book is priced as the worst book we would
+# still fund rather than the best.
+UNOBSERVED_NET_LOSS = 0.040
+
+
+def credibility(n_attempts: int) -> float:
+    """Square-root credibility weight in [0, 1].
+
+    Standard actuarial partial credibility: confidence in a measured rate
+    grows with the square root of exposure, so 75 attempts earns half the
+    weight of 300, not a quarter.
+    """
+    if n_attempts <= 0:
+        return 0.0
+    return min(1.0, (n_attempts / FULL_CREDIBILITY_ATTEMPTS) ** 0.5)
+
 
 # ---------------------------------------------------------------------------
 # 1. Bad-debt scanner
@@ -185,11 +209,22 @@ def scan_bad_debt(book: Book) -> Dict:
     face = sum(by_payer.values()) or 1
 
     tickets = [r.amount_c for r in book.receivables]
+
+    # Blend the measured loss rate toward a conservative prior in proportion
+    # to how much evidence there actually is. A well-observed book is
+    # unaffected; a thin one is priced closer to what we assume rather than
+    # what we happened to see.
+    observed_loss = gross * (1 - cure)
+    z = credibility(len(book.attempts))
+    net_loss = z * observed_loss + (1 - z) * UNOBSERVED_NET_LOSS
+
     return {
         "attempts": len(book.attempts),
         "gross_dishonour_rate": gross,
         "cure_rate": cure,
-        "net_loss_rate": gross * (1 - cure),
+        "credibility": z,
+        "observed_net_loss_rate": observed_loss,
+        "net_loss_rate": net_loss,
         "hard_fail_share": hard_v / dis_v if dis_v else 0.0,
         # A book can have a payment history and no forward schedule — a real
         # merchant with attempts but no active subscriptions. That is "not
@@ -249,6 +284,11 @@ def grade_from_scan(scan: Dict, book: Book, fee_drag: float) -> str:
     s += 0 if book.trading_months >= 24 else 1 if book.trading_months >= 12 else 2
     s += 0 if scan["hard_fail_share"] < 0.25 else 1
     s += 0 if fee_drag < 0.015 else 1 if fee_drag < 0.030 else 2
+    # Thin history is itself a risk. Without this a brand-new merchant with
+    # no observed failures grades better than an established one with a
+    # measured 2% loss.
+    z = scan.get("credibility", 1.0)
+    s += 0 if z >= 0.99 else 1 if z >= 0.60 else 2
     return ["A", "A-", "B+", "B", "C"][min(s, 4)]
 
 
