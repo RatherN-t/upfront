@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS investors (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL,
     email      TEXT NOT NULL UNIQUE,
+    pinch_payer_id TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -138,6 +139,9 @@ _MIGRATIONS = {
         "connection_type": "TEXT NOT NULL DEFAULT 'managed'",
         "pinch_app_id": "TEXT",
         "pinch_secret": "TEXT",
+    },
+    "investors": {
+        "pinch_payer_id": "TEXT",
     },
 }
 
@@ -242,6 +246,12 @@ def upsert_investor(name: str, email: str) -> sqlite3.Row:
         c.execute("INSERT INTO investors (name, email, created_at) VALUES (?,?,?)",
                   (name, email, now_iso()))
         return c.execute("SELECT * FROM investors WHERE email=?", (email,)).fetchone()
+
+
+def set_investor_payer(investor_id: int, pinch_payer_id: str) -> None:
+    with _write_lock, connect() as c:
+        c.execute("UPDATE investors SET pinch_payer_id=? WHERE id=?",
+                  (pinch_payer_id, investor_id))
 
 
 def get_business(business_id: int) -> Optional[sqlite3.Row]:

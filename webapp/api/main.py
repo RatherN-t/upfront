@@ -42,6 +42,7 @@ routes), and internal error detail is never returned to clients.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import traceback
@@ -75,6 +76,11 @@ app.add_middleware(
 
 GATEWAY = build_gateway()
 SESSION_COOKIE = "upfront_session"
+
+# Where the investor lands after Pinch's hosted checkout. Pinch appends
+# ?paymentLinkId=...&paymentId=... to whatever is passed here.
+FRONTEND_BASE_URL = os.environ.get("UPFRONT_FRONTEND_URL",
+                                   "http://localhost:5173")
 
 
 @app.on_event("startup")
@@ -508,9 +514,24 @@ def invest(body: Invest,
     deal = db.get_deal(body.deal_id)
     link: dict[str, Any]
     try:
+        investor = db.get_investor(sess["owner_id"])
+        payer_id = investor["pinch_payer_id"]
+        if not payer_id:
+            # A payment link has no anonymous checkout — Pinch requires an
+            # existing payerId. Created lazily, once, on first invest rather
+            # than at sign-in, so browsing the marketplace never depends on
+            # a Pinch call succeeding.
+            payer_id = GATEWAY.ensure_investor_payer(
+                investor["name"], investor["email"])
+            db.set_investor_payer(sess["owner_id"], payer_id)
+
         link = GATEWAY.create_payment_link(
             amount_c=accepted_c,
             description=f"Upfront — {deal['business_name']} ({deal['rail_score']})",
+            payer_id=payer_id,
+            # Pinch appends paymentLinkId and paymentId itself; do not add
+            # placeholders here.
+            return_url=FRONTEND_BASE_URL,
             metadata={"upfront": {"deal_id": body.deal_id,
                                   "investment_id": investment_id}},
         )

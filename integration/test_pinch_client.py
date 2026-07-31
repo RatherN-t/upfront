@@ -127,6 +127,34 @@ class TestMoney(unittest.TestCase):
         self.assertEqual(_cents(3478), 3478)
 
 
+class TestPaymentLinkRequiresPayer(unittest.TestCase):
+    """A 400 from the real API named PayerId as empty when it was omitted —
+    a payment link has no anonymous checkout. Locks the request shape in."""
+
+    def test_body_carries_payer_id_and_return_url(self):
+        pc = PinchClient(app_id="app_test_x", secret="sk_test_x")
+        captured = {}
+
+        def fake_request(method, path, *, body=None, **kw):
+            captured["method"], captured["path"], captured["body"] = (
+                method, path, body)
+            return {"id": "plk_x", "url": "https://pay.getpinch.com.au/pay/plk_x"}
+
+        pc._request = fake_request
+        pc.create_payment_link(amount_c=5000, description="test",
+                               payer_id="pyr_abc", return_url="https://x.test/")
+        self.assertEqual(captured["path"], "/payment-links")
+        self.assertEqual(captured["body"]["payerId"], "pyr_abc")
+        self.assertEqual(captured["body"]["returnUrl"], "https://x.test/")
+        self.assertIn("bank-account", captured["body"]["allowedPaymentMethods"])
+
+    def test_payer_id_is_a_required_keyword(self):
+        pc = PinchClient(app_id="app_test_x", secret="sk_test_x")
+        with self.assertRaises(TypeError):
+            pc.create_payment_link(amount_c=5000, description="test",
+                                   return_url="https://x.test/")
+
+
 class TestMerchantHeaderIsStructural(unittest.TestCase):
     def test_base_client_exposes_no_per_merchant_reads(self):
         """A per-merchant call must only be reachable via as_merchant(), so

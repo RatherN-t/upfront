@@ -170,14 +170,22 @@ class SimulatedGateway:
             raise GatewayError(f"no simulated book for {mch_id}")
         return _synthesise_pull(mch_id, profile)
 
+    def ensure_investor_payer(self, name: str, email: str) -> str:
+        return "pyr_sim" + hashlib.sha256(email.encode()).hexdigest()[:10]
+
     def create_payment_link(self, *, amount_c: int, description: str,
+                            payer_id: str, return_url: str,
+                            allowed_payment_methods: Optional[list] = None,
                             metadata: Optional[dict] = None) -> dict:
         if not isinstance(amount_c, int) or isinstance(amount_c, bool):
             raise TypeError("amount_c must be integer cents")
+        if not payer_id:
+            raise TypeError("payer_id is required")
         pl = self._next_id("pl")
         return {"id": pl,
                 "url": f"https://pay.getpinch.com.au/simulated/{pl}",
                 "amount": amount_c, "description": description,
+                "payerId": payer_id, "returnUrl": return_url,
                 "_mode": self.mode}
 
 
@@ -433,10 +441,32 @@ class LiveGateway:
             pull["_history_source"] = "synthesised"
         return pull
 
+    def ensure_investor_payer(self, name: str, email: str) -> str:
+        """Get-or-create the investor as a Payer of Upfront's OWN merchant.
+
+        A payment link requires an existing payerId — there is no anonymous
+        checkout — so this must run before the first invest. Uses `as_self()`
+        deliberately: the investor is a customer of Upfront itself, not of
+        any managed merchant, so no Current-Merchant header belongs here.
+
+        Re-creating on every call would be wasteful and would leave stray
+        duplicate payers on the account, so callers should cache the id
+        (see `db.investors.pinch_payer_id`) and only call this once.
+        """
+        first, _, last = name.strip().partition(" ")
+        p = self.client.as_self().create_payer(
+            first_name=first or name, last_name=last, email=email)
+        return p["id"]
+
     def create_payment_link(self, *, amount_c: int, description: str,
+                            payer_id: str, return_url: str,
+                            allowed_payment_methods: Optional[list] = None,
                             metadata: Optional[dict] = None) -> dict:
         r = self.client.create_payment_link(
-            amount_c=amount_c, description=description, metadata=metadata)
+            amount_c=amount_c, description=description, payer_id=payer_id,
+            return_url=return_url,
+            allowed_payment_methods=allowed_payment_methods,
+            metadata=metadata)
         r["_mode"] = self.mode
         return r
 

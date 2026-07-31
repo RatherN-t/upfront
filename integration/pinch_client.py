@@ -331,9 +331,25 @@ class PinchClient:
         return self._paged("/merchants/managed")
 
     def create_payment_link(self, *, amount_c: int, description: str,
+                            payer_id: str, return_url: str,
+                            allowed_payment_methods: Optional[list] = None,
                             metadata: Optional[dict] = None) -> dict:
-        """Investor money-in on Upfront's own account."""
-        body = {"amount": _cents(amount_c), "description": description}
+        """Investor money-in on Upfront's own account.
+
+        `payerId` is REQUIRED by the API — a payment link has no anonymous
+        checkout, so the investor must already exist as a Payer of Upfront's
+        own merchant before a link can be created (`as_self().create_payer`).
+        Confirmed from a 400 that named `PayerId` as empty when this was
+        omitted. `returnUrl` and `allowedPaymentMethods` are also required;
+        Pinch appends `paymentLinkId` and `paymentId` to `returnUrl` on
+        completion.
+        """
+        body = {
+            "amount": _cents(amount_c), "description": description,
+            "payerId": payer_id, "returnUrl": return_url,
+            "allowedPaymentMethods": allowed_payment_methods
+                or ["bank-account", "credit-card"],
+        }
         if metadata:
             body["metadata"] = json.dumps(metadata)
         return self._request("POST", "/payment-links", body=body)

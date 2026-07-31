@@ -242,6 +242,38 @@ class TestFlow(unittest.TestCase):
         self.assertEqual(detail["deal"]["raised_c"], 50000)
         self.assertEqual(len(detail["investments"]), 1)
 
+    def test_invest_creates_a_payer_before_the_payment_link(self):
+        """Pinch requires an existing payerId on a payment link — there is
+        no anonymous checkout. This caught a real bug: the first live
+        invest() failed with 'PayerId must not be empty' because no payer
+        was ever created."""
+        me = self._onboard_business()
+        self.biz.post("/api/business/open-round",
+                      json={"deadline_days": 7, "min_ticket_dollars": 50})
+        deal_id = self.biz.get("/api/business/me").json()["deals"][0]["id"]
+
+        self.inv.post("/api/investor/start",
+                      json={"name": "Ari Nakamura", "email": "ari2@example.test"})
+        r = self.inv.post("/api/invest",
+                          json={"deal_id": deal_id, "amount_dollars": 500})
+        self.assertEqual(r.status_code, 200, r.text)
+
+        with db.connect() as c:
+            row = c.execute("SELECT pinch_payer_id FROM investors WHERE email=?",
+                            ("ari2@example.test",)).fetchone()
+        self.assertTrue(row["pinch_payer_id"],
+                        "invest() must create and persist a payer id")
+
+        # A second investment by the same investor must reuse it, not create
+        # a duplicate payer on the account.
+        r2 = self.inv.post("/api/invest",
+                           json={"deal_id": deal_id, "amount_dollars": 100})
+        self.assertEqual(r2.status_code, 200, r2.text)
+        with db.connect() as c:
+            row2 = c.execute("SELECT pinch_payer_id FROM investors WHERE email=?",
+                             ("ari2@example.test",)).fetchone()
+        self.assertEqual(row["pinch_payer_id"], row2["pinch_payer_id"])
+
     def test_second_round_blocked_while_one_is_open(self):
         self._onboard_business()
         self.biz.post("/api/business/open-round",
