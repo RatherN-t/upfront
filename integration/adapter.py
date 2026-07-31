@@ -55,9 +55,38 @@ def attempts_from_processed(processed: list[dict]) -> list[Attempt]:
     return out
 
 
+def _amount_c(d: dict) -> int:
+    """Pinch uses `amountInCents` on calculated payments and `amount`
+    elsewhere. Read both rather than silently parsing one as zero — that
+    mismatch emptied the forward book on the first live pull."""
+    for key in ("amountInCents", "amount"):
+        v = d.get(key)
+        if v is not None:
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                continue
+    return 0
+
+
+def _date_str(d: dict) -> str:
+    for key in ("paymentDate", "transactionDate", "date"):
+        v = d.get(key)
+        if v:
+            return str(v)
+    return ""
+
+
 def _weeks_out(date_str: str, now: datetime) -> int:
+    s = (date_str or "").replace("Z", "+00:00")
+    # Pinch returns 7 fractional digits; fromisoformat accepts at most 6.
+    if "." in s:
+        head, _, tail = s.partition(".")
+        digits = "".join(c for c in tail if c.isdigit())[:6]
+        rest = tail[len(digits):].lstrip("0123456789")
+        s = f"{head}.{digits}{rest}" if digits else head + rest
     try:
-        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(s)
     except Exception:
         return 1
     if dt.tzinfo is None:
@@ -66,10 +95,28 @@ def _weeks_out(date_str: str, now: datetime) -> int:
     return max(1, round(delta / 7))
 
 
+def mandated_payers(payers: list[dict]) -> set[str]:
+    """Payer ids with a payment source or an active DDR agreement.
+
+    Built from the hydrated payer list rather than the payer embedded in a
+    subscription: the subscription's copy is the slim shape with both fields
+    null, and trusting it screens out every real contract.
+    """
+    out: set[str] = set()
+    for p in payers:
+        pid = p.get("id")
+        if not pid:
+            continue
+        if p.get("sources") or p.get("agreements"):
+            out.add(pid)
+    return out
+
+
 def receivables_from_calculated(subscriptions: list[dict],
                                 calculated_by_plan: dict[str, list[dict]],
                                 payer_hard_fail: set[str],
-                                now: datetime | None = None) -> list[Receivable]:
+                                now: datetime | None = None,
+                                mandated: set[str] | None = None) -> list[Receivable]:
     """Build the forward schedule from calculated-payments per subscription."""
     now = now or datetime.now(timezone.utc)
     out: list[Receivable] = []
@@ -79,17 +126,22 @@ def receivables_from_calculated(subscriptions: list[dict],
         plan_id = sub.get("planId") or (sub.get("plan") or {}).get("id")
         status = (sub.get("status") or "").lower()
         committed = status in ("active", "scheduled")
-        has_mandate = bool(payer.get("agreements") or payer.get("sources"))
+        # A subscription's own sourceId is mandate evidence: the live
+        # subscription payload does not embed the payer's sources or
+        # agreements, so relying on those alone screened out every real
+        # contract as "no active mandate".
+        has_mandate = bool(payer.get("agreements") or payer.get("sources")
+                           or sub.get("sourceId")
+                           or (mandated and pid in mandated))
         sched = calculated_by_plan.get(plan_id, [])
         for pay in sched:
-            amt = int(pay.get("amount", 0))
+            amt = _amount_c(pay)
             if amt <= 0:
                 continue
             out.append(Receivable(
                 payer_id=pid,
                 amount_c=amt,
-                weeks_out=_weeks_out(pay.get("transactionDate")
-                                     or pay.get("date", ""), now),
+                weeks_out=_weeks_out(_date_str(pay), now),
                 has_mandate=has_mandate,
                 committed_term=committed,
                 payer_hard_fail=pid in payer_hard_fail,
@@ -140,7 +192,8 @@ def book_from_pull(pull: dict, *, name: str, sector: str,
             if pid and "payments" in sub:
                 calc[pid] = sub["payments"]
 
-    receivables = receivables_from_calculated(subs, calc, hard)
+    receivables = receivables_from_calculated(
+        subs, calc, hard, mandated=mandated_payers(pull.get("payers", [])))
     attempts = attempts_from_processed(processed)
 
     return Book(

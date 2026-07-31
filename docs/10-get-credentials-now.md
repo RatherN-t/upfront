@@ -9,9 +9,14 @@ just the ordered click-path plus what to do when it doesn't work.
 Pinch Developer Account"* giving *"access to the Developer Portal and a
 sandbox environment where you can test without processing real payments,"*
 and state *"most developers are making test API calls within 15 minutes."*
-Test mode is not a separate login — it is the same credentials against the
-`/test/` base URL.
-[source: docs.getpinch.com.au/docs/get-started-with-the-pinch-api]
+Test mode is not a separate login — same portal, same account — but it is
+**not** the same credentials as live. The portal issues two pairs under one
+Application: Live Keys (`app_...` / `sk_live_...`) and Development Keys
+(`app_test_...` / `sk_test_...`). Use the Development pair against the
+`/test/` base URL; a Live Application ID paired with a test Secret Key
+returns `400 {"error":"invalid_client"}`.
+[source: docs.getpinch.com.au/docs/get-started-with-the-pinch-api;
+web.getpinch.com.au/api-keys, observed 2026-07-31]
 
 ---
 
@@ -21,19 +26,23 @@ Test mode is not a separate login — it is the same credentials against the
    web.getpinch.com.au). This creates your Merchant account.
 
 2. **Create an application** — portal → **API Keys** → create application.
-   You get an **Application ID**, a **Secret Key**, and a Publishable Key.
-   The Secret is shown once; store it immediately.
+   The page lists two blocks: **Live Keys** and **Development Keys**. Copy
+   the **Development** ones — Application ID `app_test_...`, Secret Key
+   `sk_test_...` — not the Live pair. The Secret is shown once; store it
+   immediately.
 
-3. **Export them** in the shell you run the app from:
+3. **Supply them via `.env`**:
 
    ```bash
-   export PINCH_APP_ID=...
-   export PINCH_SECRET=...
+   cp .env.example .env
    ```
 
-   Never commit these. The `no_secrets` guard catches `sk_`, `whsec_` and
-   bearer patterns, but only on files you actually add — it is a backstop,
-   not a permission slip.
+   Paste the Development Application ID and Secret into `.env`. A `.env`
+   loader (`load_dotenv()` in `integration/pinch_client.py`) picks them up
+   automatically; `.env` is gitignored, `.env.example` is not and must never
+   hold a real secret. Never commit the real values. The `no_secrets` guard
+   catches `sk_`, `whsec_` and bearer patterns, but only on files you
+   actually add — it is a backstop, not a permission slip.
 
 4. **Verify the token exchange works** (~10 seconds, no side effects):
 

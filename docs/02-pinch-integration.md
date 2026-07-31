@@ -254,8 +254,15 @@ Money out is an off-rail bank transfer. Pinch collects; it does not disburse.
 
 ## 9. Testing — this is how you make it real without real money
 
-Pinch test mode runs on the **same** credentials and endpoints; only the base
-URL differs. No separate sandbox login.
+Pinch issues **two separate credential sets** under one Application — Live
+Keys (`app_...` / `sk_live_...`) and Development Keys (`app_test_...` /
+`sk_test_...`). Test mode means the Development pair against the `/test/`
+base URL, not the same credentials as live. Mixing a Live Application ID with
+a test Secret Key returns `400 {"error":"invalid_client"}` — we hit exactly
+this. `PinchClient` now refuses `sk_live_` secrets, refuses `live=True`, and
+detects the mismatched-pair case by name (docs/00-decisions.md D10).
+No separate sandbox login, no public list of demo merchants.
+[source: web.getpinch.com.au/api-keys, observed 2026-07-31]
 
 ### Test cards (any future expiry, any CVC)
 

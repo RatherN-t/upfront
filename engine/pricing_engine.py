@@ -191,7 +191,12 @@ def scan_bad_debt(book: Book) -> Dict:
         "cure_rate": cure,
         "net_loss_rate": gross * (1 - cure),
         "hard_fail_share": hard_v / dis_v if dis_v else 0.0,
-        "top_payer_concentration": max(by_payer.values()) / face,
+        # A book can have a payment history and no forward schedule — a real
+        # merchant with attempts but no active subscriptions. That is "not
+        # fundable", which price_deal already reports; reaching max() on an
+        # empty dict first turned it into an opaque ValueError instead.
+        "top_payer_concentration": (max(by_payer.values()) / face
+                                    if by_payer else 0.0),
         "distinct_payers": len(by_payer),
         "median_ticket_c": sorted(tickets)[len(tickets) // 2] if tickets else 0,
     }

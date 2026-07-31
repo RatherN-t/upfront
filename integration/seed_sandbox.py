@@ -75,10 +75,13 @@ def seed(pc: PinchClient) -> str:
         payer = scope.create_payer(
             first_name=f"{first}{i:02d}", last_name="Test",
             email=f"rider{i:02d}@mailinator.com", mobile="0400123456",
-            # any BSB/account is accepted in test mode; no real tokenisation
-            # needed for the seed, so we pass the well-known test source token
-            source_token="tok_test_bank_000000_0000000000",
-            source_type="bank-account",
+            # Raw details, not a token: CaptureJS tokenisation needs a
+            # browser, and test mode accepts any BSB/account directly.
+            # Must differ from the merchant's own disbursement account:
+            # Pinch rejects a payer whose details match the merchant's,
+            # because a business cannot direct-debit itself.
+            bsb="000-001", account_number="123456789",
+            account_name=f"Rider{i:02d} Test",
             metadata={"upfront": {"seed": True, "mix": mix}},
         )
         payer_ids.append((payer["id"], mix))
@@ -99,6 +102,18 @@ def seed(pc: PinchClient) -> str:
             )
             n += 1
     print(f"  {n} payments scheduled")
+
+    # The forward book. Scheduled payments alone are history; the engine
+    # discounts a *committed* schedule, which on Pinch means a Plan with
+    # Subscriptions against it. Without this the book prices as unfundable.
+    print("Creating plan and subscriptions (the forward book)…")
+    plan = scope.create_plan(name="Voltride weekly", amount_c=WEEKLY_CENTS,
+                             interval="weekly", n_payments=26)
+    for pid, _ in payer_ids:
+        scope.create_subscription(
+            plan_id=plan["id"], payer_id=pid,
+            start_date=(today + timedelta(weeks=1)).isoformat())
+    print(f"  plan {plan['id']} + {len(payer_ids)} subscriptions")
 
     print("Time-Travelling forward to post results…")
     future = (today + timedelta(days=3)).isoformat() + "T09:45:59Z"

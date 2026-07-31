@@ -337,8 +337,11 @@ class LiveGateway:
                 first_name=f"Customer{i:03d}", last_name="Test",
                 email=f"c{i:03d}+{mch_id[-6:]}@mailinator.com",
                 mobile="0400123456",
-                source_token="tok_test_bank_000000_0000000000",
-                source_type="bank-account",
+                # Must differ from the merchant's own disbursement account:
+            # Pinch rejects a payer whose details match the merchant's,
+            # because a business cannot direct-debit itself.
+            bsb="000-001", account_number="123456789",
+                account_name=f"Customer{i:03d} Test",
                 metadata={"upfront": {"seeded": True, "mix": mix}},
             )
             payer_ids.append((p["id"], mix))
@@ -408,10 +411,17 @@ def build_gateway(force_simulated: bool = False) -> Any:
     """
     if force_simulated:
         return SimulatedGateway()
-    import os
-    if not (os.environ.get("PINCH_APP_ID") and os.environ.get("PINCH_SECRET")):
-        return SimulatedGateway()
     try:
+        from pinch_client import credential_or_none, load_dotenv
+        load_dotenv()
+        if not (credential_or_none("PINCH_APP_ID")
+                and credential_or_none("PINCH_SECRET")):
+            return SimulatedGateway()
         return LiveGateway.from_env()
-    except Exception:
+    except Exception as exc:                      # noqa: BLE001
+        # Loud on stderr, because silently running simulated when the user
+        # believes they configured live credentials is exactly the confusion
+        # this whole module is built to prevent.
+        print(f"[pinch] falling back to simulator: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
         return SimulatedGateway()
