@@ -148,7 +148,7 @@ function Offer({ me, onOpen, busy }) {
       </div>
 
       <div className="grid two" style={{ marginBottom: 16 }}>
-        <BookScan scan={p.scan} />
+        <BookScan scan={p.scan} historySource={p.history_source} />
         <FeeDrag pricing={p} />
       </div>
 

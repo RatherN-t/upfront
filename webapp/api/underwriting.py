@@ -67,6 +67,7 @@ def underwrite(pull: dict, profile: BookProfile) -> dict:
     dist = distribution_for(pricing)
     pricing["distribution"] = dist
     pricing["mode"] = pull.get("_mode", "unknown")
+    pricing["history_source"] = pull.get("_history_source", "unknown")
     return pricing
 
 
@@ -165,6 +166,9 @@ def public_pricing(pricing: dict) -> dict:
     return {
         "fundable": True,
         "mode": pricing.get("mode", "unknown"),
+        # "pinch" = measured from settled payments; "synthesised" = stood in
+        # because the account has no settled history yet. The UI must say so.
+        "history_source": pricing.get("history_source", "unknown"),
         "rail_score": pricing["grade"],
         "asset_class": pricing["asset_class"],
         "scan": {

@@ -118,7 +118,8 @@ function DealDetail({ id, onBack }) {
 
       {pricing && pricing.scan && (
         <div className="grid two" style={{ marginBottom: 16 }}>
-          <BookScan scan={pricing.scan} />
+          <BookScan scan={pricing.scan}
+                    historySource={pricing.history_source} />
           <FeeDrag pricing={pricing} />
         </div>
       )}

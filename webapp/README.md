@@ -50,15 +50,42 @@ seeding path that skips the real flow stops proving the real flow works.
 ## Live Pinch vs simulator
 
 With `PINCH_APP_ID` and `PINCH_SECRET` set, the gateway makes real test-mode
-API calls: a managed merchant per business, a seeded payment history, a real
-underwriting pull, and a real payment link per investment. Without them it
-runs an in-process simulator that emits Pinch-shaped JSON.
+API calls: a managed merchant per business, real payers with DDR agreements,
+a Plan and Subscriptions, a real underwriting pull, and a real payment link
+per investment. Without them it runs an in-process simulator that emits
+Pinch-shaped JSON.
+
+Force the simulator even with credentials present:
+
+```bash
+UPFRONT_FORCE_SIMULATED=1 ../../.venv/bin/python -m uvicorn main:app --port 8017
+```
 
 **The mode is shown in the UI, returned by `/api/health`, and stored against
 every business and investment.** That is deliberate. The same adapter code
 runs in both modes, so a green test suite is real evidence about the adapter
 and no evidence at all about Pinch — only a live test-mode call proves that
 half. See `docs/10-get-credentials-now.md`.
+
+### Two things the live path cannot do, and why
+
+**Settled history.** Pinch's test-mode settlement runs on its own batch, so a
+freshly seeded account has a real forward book and no processed payments for
+days — Time-Travel returns events but does not force settlement. When the
+live pull comes back with no settled payments, the attempt history is
+generated so the book is gradeable, and the response carries
+`history_source: "synthesised"`, which the UI states plainly on the book
+panel. Everything structural — merchant, payers, mandates, plan,
+subscriptions, forward schedule — is whatever Pinch actually returned. **A
+business that has genuinely been trading has its own history, so this branch
+never fires for them.**
+
+**Book size.** Live seeding creates `LIVE_SEED_PAYERS` (12) payers, not the
+customer count the business enters, because every payment is one HTTP call
+and a 120-customer book is ~700 calls and several minutes. So a live advance
+is roughly a tenth of what the same answers produce in the simulator. For a
+full-size marketplace walkthrough, use `UPFRONT_FORCE_SIMULATED=1`; use live
+mode to show the integration is real.
 
 ## Tests
 

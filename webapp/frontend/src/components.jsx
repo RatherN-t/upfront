@@ -108,13 +108,26 @@ export function FeeDrag({ pricing }) {
  * it were observed — or worse, rendering an unobserved 0% as a clean book —
  * is the exact failure the engine's credibility weighting exists to prevent.
  */
-export function BookScan({ scan }) {
+export function BookScan({ scan, historySource }) {
   const cred = scan.credibility === undefined ? 1 : scan.credibility
   const thin = cred < 0.99
+  const standIn = historySource === 'synthesised'
 
   return (
     <div className="card">
-      <h3>What the rail shows</h3>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h3>What the rail shows</h3>
+        {standIn && <span className="chip gold">history stood in</span>}
+      </div>
+      {standIn && (
+        <p className="small" style={{ margin: '10px 0 0', color: 'var(--gold)' }}>
+          This account has no settled payments yet — Pinch's test-mode
+          settlement runs on its own batch — so the attempt history below is
+          generated, not measured. The merchant, mandates, plan and forward
+          schedule above are real Pinch records. A business that has actually
+          been trading is underwritten on its own history instead.
+        </p>
+      )}
       {thin ? (
         <p className="small muted" style={{ margin: '8px 0 16px' }}>
           Only {scan.attempts.toLocaleString()} settled payment attempts on

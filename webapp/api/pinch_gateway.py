@@ -181,6 +181,70 @@ class SimulatedGateway:
                 "_mode": self.mode}
 
 
+def synthesise_attempts(mch_id: str, profile: BookProfile,
+                        rng: Optional[random.Random] = None,
+                        payer_ids: Optional[list[str]] = None) -> list[dict]:
+    """Pinch-shaped `GET /payments/processed` records for a book's history.
+
+    Used in two places. The simulator uses it for everything. The live path
+    uses it ONLY when a real merchant has no settled payments yet — Pinch's
+    test-mode settlement runs on its own batch, so a freshly seeded sandbox
+    account has a real forward book and an empty history for days.
+
+    Whoever calls this must label the result. An assumed history presented as
+    a measured one is the single most damaging thing this codebase could do.
+    """
+    rng = rng or random.Random(
+        int(hashlib.sha256(f"{mch_id}:{profile.name}".encode()).hexdigest()[:12], 16))
+    today = date.today()
+    cure_within_soft = min(0.99, profile.cure_rate / max(1e-9, 1 - profile.hard_share))
+    n_hist = profile.history_attempts()
+
+    ids = payer_ids or [f"pyr_{mch_id[-6:]}_{i:04d}"
+                        for i in range(profile.customers)]
+
+    # A hard dishonour is terminal for that payer's mandate — the customer
+    # churns off the book rather than paying for another two years. So hard
+    # codes belong to a small cohort, not scattered across everyone: over a
+    # long history, random scattering flags nearly every payer as hard-fail
+    # and the eligibility screen then rejects most of a healthy book.
+    n_hard_payers = max(1, int(len(ids) * rng.uniform(0.03, 0.07)))
+    hard_cohort = set(rng.sample(ids, min(n_hard_payers, len(ids))))
+    hard_emitted: set[str] = set()
+
+    processed: list[dict] = []
+    for i in range(n_hist):
+        payer_id = ids[i % len(ids)]
+        amt = max(100, int(rng.gauss(profile.ticket_c, profile.ticket_c * 0.35)))
+        when = (today - timedelta(weeks=rng.randint(1, 100))).isoformat()
+
+        if rng.random() < profile.gross_dishonour:
+            # only the cohort can hard-fail, and only once
+            if payer_id in hard_cohort and payer_id not in hard_emitted:
+                hard_emitted.add(payer_id)
+                attempts = [{"id": f"att_{i}_0", "status": "dishonoured",
+                             "amount": amt, "transactionDate": when,
+                             "dishonour": {"code": rng.choice(HARD_CODES)}}]
+            else:
+                attempts = [{"id": f"att_{i}_0", "status": "dishonoured",
+                             "amount": amt, "transactionDate": when,
+                             "dishonour": {"code": rng.choice(SOFT_CODES)}}]
+                if rng.random() < cure_within_soft:
+                    # retry settled — the scanner reads this as a cure
+                    attempts.append({"id": f"att_{i}_1", "status": "settled",
+                                     "amount": amt, "transactionDate": when})
+        else:
+            attempts = [{"id": f"att_{i}_0", "status": "settled",
+                         "amount": amt, "transactionDate": when}]
+
+        processed.append({
+            "id": f"pmt_{mch_id[-6:]}_{i:05d}", "amount": amt,
+            "transactionDate": when, "payer": {"id": payer_id},
+            "attempts": attempts,
+        })
+    return processed
+
+
 def _synthesise_pull(mch_id: str, profile: BookProfile) -> dict:
     """Build a Pinch-shaped pull_book() response.
 
@@ -192,53 +256,7 @@ def _synthesise_pull(mch_id: str, profile: BookProfile) -> dict:
         int(hashlib.sha256(f"{mch_id}:{profile.name}".encode()).hexdigest()[:12], 16))
     today = date.today()
 
-    # --- past attempts (GET /payments/processed) ---
-    cure_within_soft = min(0.99, profile.cure_rate / max(1e-9, 1 - profile.hard_share))
-    processed: list[dict] = []
-    n_hist = profile.history_attempts()
-
-    # A hard dishonour is terminal for that payer's mandate — the customer
-    # churns off the book rather than paying for another two years. So hard
-    # codes belong to a small cohort, not scattered across everyone: over a
-    # long history, random scattering flags nearly every payer as hard-fail
-    # and the eligibility screen then rejects most of a healthy book.
-    n_hard_payers = max(1, int(profile.customers * rng.uniform(0.03, 0.07)))
-    hard_cohort = {f"pyr_{mch_id[-6:]}_{k:04d}"
-                   for k in rng.sample(range(profile.customers), n_hard_payers)}
-    hard_emitted: set[str] = set()
-
-    for i in range(n_hist):
-        payer_id = f"pyr_{mch_id[-6:]}_{i % profile.customers:04d}"
-        amt = max(100, int(rng.gauss(profile.ticket_c, profile.ticket_c * 0.35)))
-        pmt_id = f"pmt_{mch_id[-6:]}_{i:05d}"
-        when = (today - timedelta(weeks=rng.randint(1, 100))).isoformat()
-
-        if rng.random() < profile.gross_dishonour:
-            # only the cohort can hard-fail, and only once
-            if payer_id in hard_cohort and payer_id not in hard_emitted:
-                code = rng.choice(HARD_CODES)
-                hard_emitted.add(payer_id)
-                attempts = [{"id": f"att_{i}_0", "status": "dishonoured",
-                             "amount": amt, "transactionDate": when,
-                             "dishonour": {"code": code}}]
-            else:
-                code = rng.choice(SOFT_CODES)
-                attempts = [{"id": f"att_{i}_0", "status": "dishonoured",
-                             "amount": amt, "transactionDate": when,
-                             "dishonour": {"code": code}}]
-                if rng.random() < cure_within_soft:
-                    # retry settled — the scanner reads this as a cure
-                    attempts.append({"id": f"att_{i}_1", "status": "settled",
-                                     "amount": amt, "transactionDate": when})
-        else:
-            attempts = [{"id": f"att_{i}_0", "status": "settled",
-                         "amount": amt, "transactionDate": when}]
-
-        processed.append({
-            "id": pmt_id, "amount": amt, "transactionDate": when,
-            "payer": {"id": payer_id},
-            "attempts": attempts,
-        })
+    processed = synthesise_attempts(mch_id, profile, rng)
 
     # --- forward schedule (GET /subscriptions + calculated-payments) ---
     plan_id = f"pln_{mch_id[-6:]}_0001"
@@ -284,6 +302,7 @@ def _synthesise_pull(mch_id: str, profile: BookProfile) -> dict:
         "processed_payments": processed,
         "transfers": [],
         "_mode": MODE_SIMULATED,
+        "_history_source": "synthesised",
     }
 
 
@@ -386,10 +405,32 @@ class LiveGateway:
                 "payers": len(payer_ids), "plan_id": plan.get("id")}
 
     def pull_book(self, mch_id: str, profile: Optional[BookProfile] = None) -> dict:
+        """Pull the real book, standing in a history only if there isn't one.
+
+        Everything structural — merchant, payers, mandates, plan,
+        subscriptions, forward schedule — is whatever Pinch actually returns.
+        The only thing that can be stood in is the settled payment history,
+        and only when Pinch has none, because test-mode settlement runs on its
+        own batch and a freshly seeded account has an empty history for days.
+
+        A real merchant that has been trading always has its own history, so
+        this branch never fires for them — which is the point: connect a real
+        book and it is underwritten on real behaviour.
+
+        `_history_source` travels with the pull and is surfaced to the client.
+        Never drop it.
+        """
         scope = self.client.as_merchant(mch_id)
         pull = scope.pull_book()
         pull["_mode"] = self.mode
         pull["_scope"] = scope
+        pull["_history_source"] = "pinch"
+
+        if not pull.get("processed_payments") and profile is not None:
+            payer_ids = [p["id"] for p in pull.get("payers", []) if p.get("id")]
+            pull["processed_payments"] = synthesise_attempts(
+                mch_id, profile, payer_ids=payer_ids or None)
+            pull["_history_source"] = "synthesised"
         return pull
 
     def create_payment_link(self, *, amount_c: int, description: str,
@@ -411,7 +452,13 @@ def build_gateway(force_simulated: bool = False) -> Any:
     breaking the app, because the simulator is honestly labelled everywhere
     it surfaces.
     """
-    if force_simulated:
+    import os
+    # Explicit override. Live onboarding is capped at LIVE_SEED_PAYERS because
+    # every payment is an HTTP call, so a live book is far smaller than the
+    # business's real customer count. For a walkthrough of the full-size
+    # marketplace, force the simulator:
+    #     UPFRONT_FORCE_SIMULATED=1
+    if force_simulated or os.environ.get("UPFRONT_FORCE_SIMULATED") == "1":
         return SimulatedGateway()
     try:
         from pinch_client import credential_or_none, load_dotenv
