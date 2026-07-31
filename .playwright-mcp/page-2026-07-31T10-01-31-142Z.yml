@@ -1,0 +1,39 @@
+- generic [ref=f16e2]:
+  - generic [ref=f16e3]:
+    - generic [ref=f16e4]: Upfront
+    - generic [ref=f16e37]: business
+    - button "Sign out" [ref=f16e38] [cursor=pointer]
+  - generic [ref=f16e6]:
+    - generic [ref=f16e7]:
+      - strong [ref=f16e8]: "Pinch: LIVE (test mode)"
+      - generic [ref=f16e9]: Live Pinch test-mode API calls.
+    - generic [ref=f16e50]:
+      - button "← I'm new to Pinch" [ref=f16e51] [cursor=pointer]
+      - heading "Connect your Pinch account" [level=2] [ref=f16e52]
+      - paragraph [ref=f16e53]:
+        - text: Upfront only
+        - strong [ref=f16e54]: reads
+        - text: this account — payers, plans, subscriptions, payments and transfers. It never writes to a connected account.
+      - generic [ref=f16e55]:
+        - generic [ref=f16e56]:
+          - generic [ref=f16e57]:
+            - generic [ref=f16e58]: Application ID
+            - textbox "app_test_…" [ref=f16e59]
+          - generic [ref=f16e60]:
+            - generic [ref=f16e61]: Secret key
+            - textbox "sk_test_…" [ref=f16e62]
+        - generic [ref=f16e63]:
+          - generic [ref=f16e64]:
+            - generic [ref=f16e65]: What does your business do?
+            - textbox [ref=f16e66]: E-bike subscription rentals
+          - generic [ref=f16e67]:
+            - generic [ref=f16e68]: What are you selling us?
+            - combobox [ref=f16e69]:
+              - option "Contract revenue — committed subscriptions" [selected]
+              - option "Invoices — work already delivered"
+        - paragraph [ref=f16e70]: Contract revenue is service not yet delivered. If the business stops, the stream stops — which is why it prices wider than an invoice.
+        - paragraph [ref=f16e71]:
+          - text: Get these from web.getpinch.com.au/api-keys. Use the
+          - strong [ref=f16e72]: Development
+          - text: keys (app_test_… / sk_test_…), not Live — this prototype is test mode only and the backend refuses live keys.
+        - button "Connect Pinch account" [ref=f16e73] [cursor=pointer]
