@@ -145,6 +145,24 @@ class Invest(BaseModel):
 # meta
 # ---------------------------------------------------------------------------
 
+def _mode_note() -> str:
+    """Say which mode is running and why — including when the simulator was
+    chosen deliberately rather than for want of credentials. Reporting
+    'no credentials found' while a valid .env sits on disk is a small lie
+    that makes the banner untrustworthy."""
+    if GATEWAY.mode == "live":
+        return "Live Pinch test-mode API calls."
+    import os
+    if os.environ.get("UPFRONT_FORCE_SIMULATED") == "1":
+        return ("Simulator forced via UPFRONT_FORCE_SIMULATED. Credentials "
+                "may be present but are not being used. Shapes match the "
+                "Pinch API and the same adapter code runs; no API call is "
+                "being made.")
+    return ("No Pinch credentials found — running the in-process simulator. "
+            "Shapes match the Pinch API and the same adapter code runs, but "
+            "no API call is being made.")
+
+
 @app.post("/api/sign-out")
 def sign_out(resp: Response,
              upfront_session: Optional[str] = Cookie(None)) -> dict:
@@ -160,12 +178,7 @@ def health() -> dict:
         "pinch_mode": GATEWAY.mode,
         # Surfaced so the UI can say plainly which one is running. A
         # simulated run must never present itself as a live one.
-        "pinch_mode_note": (
-            "Live Pinch test-mode API calls."
-            if GATEWAY.mode == "live" else
-            "No Pinch credentials found — running the in-process simulator. "
-            "Shapes match the Pinch API and the same adapter code runs, but "
-            "no API call is being made."),
+        "pinch_mode_note": _mode_note(),
     }
 
 

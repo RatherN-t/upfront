@@ -38,6 +38,8 @@ Then:
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -65,6 +67,64 @@ def _cents(x: int) -> int:
     if isinstance(x, bool) or not isinstance(x, int):
         raise TypeError(f"amount must be integer cents, got {type(x).__name__}: {x!r}")
     return x
+
+
+class WebhookVerificationError(RuntimeError):
+    pass
+
+
+def verify_webhook(secret: str, signature_header: str, raw_body: bytes,
+                   tolerance_s: int = 300,
+                   now: Optional[float] = None) -> bool:
+    """Verify a `pinch-signature` header. Raises on anything suspect.
+
+    Header format is `t=<unix>,v2=<hmac-sha256-hex>` and the signed payload is
+    `{t}.{raw body}`. Note **v2**, not v1 — hashing the wrong scheme produces
+    a verifier that rejects every genuine delivery.
+
+    Two rules that make this worth having:
+
+    * The body must be the RAW bytes as received. Parsing to JSON and
+      re-serialising changes whitespace and key order, and the signature no
+      longer matches — verify first, parse second.
+    * Comparison is constant-time. A `==` on a hex digest leaks how much of
+      the prefix was right, which is enough to forge one byte at a time.
+
+    The timestamp check is what stops a captured-and-replayed delivery being
+    accepted forever.
+    """
+    if not secret:
+        raise WebhookVerificationError("no webhook secret configured")
+    if not signature_header:
+        raise WebhookVerificationError("missing pinch-signature header")
+
+    parts: dict[str, str] = {}
+    for chunk in signature_header.split(","):
+        key, _, value = chunk.strip().partition("=")
+        if key:
+            parts[key.strip()] = value.strip()
+
+    ts_raw, sig = parts.get("t"), parts.get("v2")
+    if not ts_raw or not sig:
+        raise WebhookVerificationError(
+            f"malformed signature header: {signature_header[:80]!r}")
+    try:
+        ts = int(ts_raw)
+    except ValueError:
+        raise WebhookVerificationError(f"non-numeric timestamp {ts_raw!r}")
+
+    current = time.time() if now is None else now
+    if abs(current - ts) > tolerance_s:
+        raise WebhookVerificationError(
+            f"timestamp outside {tolerance_s}s tolerance (skew "
+            f"{abs(current - ts):.0f}s) — possible replay")
+
+    expected = hmac.new(secret.encode(),
+                        f"{ts}.".encode() + raw_body,
+                        hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise WebhookVerificationError("signature mismatch")
+    return True
 
 
 def load_dotenv(path: Optional[str] = None) -> None:
@@ -435,6 +495,27 @@ class MerchantScope:
         "fortnightly": (14, "days"),
         "monthly": (1, "months"),
     }
+
+    def create_webhook(self, *, uri: str,
+                       event_types: Optional[list] = None,
+                       webhook_format: str = "json") -> dict:
+        """Register a webhook for THIS merchant.
+
+        Register one per managed merchant, immediately after storing the
+        `mch_` id. The response carries a `whsec_...` secret — store it, it
+        is the key `verify_webhook` needs and it is not retrievable later.
+        """
+        body: dict = {"uri": uri, "webhookFormat": webhook_format}
+        if event_types:
+            body["eventTypes"] = event_types
+        return self._post("/webhooks", body)
+
+    def list_webhooks(self) -> list:
+        return self._paged("/webhooks")
+
+    def delete_webhook(self, webhook_id: str) -> dict:
+        return self.client._request("DELETE", f"/webhooks/{webhook_id}",
+                                    merchant=self.merchant_id)
 
     def create_plan(self, *, name: str, amount_c: int,
                     interval: str = "weekly", n_payments: int = 26,
