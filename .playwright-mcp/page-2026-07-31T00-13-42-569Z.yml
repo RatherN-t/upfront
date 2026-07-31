@@ -1,0 +1,33 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: Upfront
+    - generic [ref=e37]: business
+    - button "Sign out" [ref=e38] [cursor=pointer]
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - strong [ref=e8]: "Pinch: SIMULATED"
+      - generic [ref=e9]: No Pinch credentials found — running the in-process simulator. Shapes match the Pinch API and the same adapter code runs, but no API call is being made.
+    - paragraph [ref=e62]: managed merchant mch_sim00000001 · simulated
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - heading "Your round" [level=2] [ref=e148]
+        - generic [ref=e149]: 6d left
+      - generic [ref=e153]:
+        - generic [ref=e154]: $0 raised
+        - generic [ref=e155]: $85,056 target
+    - generic [ref=e157]:
+      - heading "What investors see" [level=3] [ref=e158]
+      - paragraph [ref=e159]: The same downside we show you.
+      - generic [ref=e161]:
+        - generic [ref=e162]:
+          - generic [ref=e163]: Mean return
+          - generic [ref=e164]: 8.08%
+          - generic [ref=e165]: expected, p.a.
+        - generic [ref=e166]:
+          - generic [ref=e167]: 5th percentile
+          - generic [ref=e168]: 0.83%
+          - generic [ref=e169]: 1 run in 20 is worse
+        - generic [ref=e170]:
+          - generic [ref=e171]: Chance of loss
+          - generic [ref=e172]: 4.2%
+          - generic [ref=e173]: probability of < 0%

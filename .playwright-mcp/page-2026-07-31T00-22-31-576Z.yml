@@ -1,0 +1,19 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e3]: Upfront
+  - generic [ref=f3e6]:
+    - generic [ref=f3e7]:
+      - strong [ref=f3e8]: "Pinch: SIMULATED"
+      - generic [ref=f3e9]: No Pinch credentials found — running the in-process simulator. Shapes match the Pinch API and the same adapter code runs, but no API call is being made.
+    - generic [ref=f3e24]:
+      - button "← Back" [ref=f3e25] [cursor=pointer]
+      - generic [ref=f3e26]:
+        - heading "Your details" [level=2] [ref=f3e27]
+        - paragraph [ref=f3e28]: No password — this is a test-mode prototype.
+        - generic [ref=f3e29]:
+          - generic [ref=f3e30]:
+            - generic [ref=f3e31]: Your name
+            - textbox "Ari" [ref=f3e32]
+          - generic [ref=f3e33]:
+            - generic [ref=f3e34]: Email
+            - textbox "ari@example.com" [ref=f3e35]
+          - button "Continue" [ref=f3e36] [cursor=pointer]

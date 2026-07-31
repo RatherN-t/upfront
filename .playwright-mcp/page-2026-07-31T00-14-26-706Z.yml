@@ -1,0 +1,37 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: Upfront
+    - generic [ref=e201]: investor
+    - button "Sign out" [ref=e202] [cursor=pointer]
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - strong [ref=e8]: "Pinch: SIMULATED"
+      - generic [ref=e9]: No Pinch credentials found — running the in-process simulator. Shapes match the Pinch API and the same adapter code runs, but no API call is being made.
+    - heading "Open rounds" [level=1] [ref=e203]
+    - paragraph [ref=e204]: Every business here was underwritten from its actual payment history. Returns are shown as a distribution because a mid-teens mean is not a floor.
+    - generic [ref=e206]:
+      - generic [ref=e207]:
+        - generic [ref=e208]:
+          - heading "Voltride Pty Ltd" [level=3] [ref=e209]
+          - text: E-bike subscription rentals
+        - generic [ref=e210]: A-
+      - generic [ref=e214]:
+        - generic [ref=e215]: $0 raised
+        - generic [ref=e216]: $85,056 target
+      - generic [ref=e218]:
+        - generic [ref=e219]:
+          - generic [ref=e220]: Mean return
+          - generic [ref=e221]: 8.08%
+          - generic [ref=e222]: expected, p.a.
+        - generic [ref=e223]:
+          - generic [ref=e224]: 5th percentile
+          - generic [ref=e225]: 0.83%
+          - generic [ref=e226]: 1 run in 20 is worse
+        - generic [ref=e227]:
+          - generic [ref=e228]: Chance of loss
+          - generic [ref=e229]: 4.2%
+          - generic [ref=e230]: probability of < 0%
+      - generic [ref=e231]:
+        - generic [ref=e232]: Contract revenue · 26w · fee drag 2.76%
+        - generic [ref=e233]: 7d left
+      - button "View deal · min $50" [ref=e234] [cursor=pointer]

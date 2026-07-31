@@ -87,7 +87,7 @@ def distribution_for(pricing: dict, sims: int = SINGLE_DEAL_SIMS) -> dict:
     dist = simulate([pos], PortfolioParams(), n=sims, seed=7,
                     include_samples=True)
     samples = dist.pop("samples", [])
-    dist["histogram"] = histogram(samples)
+    dist["curve"] = percentile_curve(samples)
     return dist
 
 
@@ -107,20 +107,30 @@ def summarise_returns(dist: dict) -> dict:
     }
 
 
-def histogram(dist_positions: list[float], bins: int = 24) -> list[dict]:
-    """Bucket raw simulated returns for the frontend chart."""
-    if not dist_positions:
+def percentile_curve(samples: list[float]) -> list[dict]:
+    """Return at each percentile — the honest chart for this distribution.
+
+    A histogram is the wrong tool here. A single-deal outcome is close to a
+    point mass: if the business does not fail, the return is nearly
+    deterministic, so ~95% of runs land in one narrow band and a histogram is
+    a single spike with an empty axis beside it. Rebinning does not fix that,
+    because the information is in the tail, which is long and thin.
+
+    A percentile curve shows both without distorting either. It reads
+    directly as "this outcome or worse, this often": the flat right-hand
+    section is the ordinary result, and the cliff on the left is the real
+    risk. It is also the same quantity quoted in the summary — p5 and p1 are
+    just points on this line — so the chart and the headline numbers cannot
+    drift apart.
+    """
+    if not samples:
         return []
-    lo, hi = min(dist_positions), max(dist_positions)
-    if hi <= lo:
-        return [{"lo": lo, "hi": hi, "count": len(dist_positions)}]
-    width = (hi - lo) / bins
-    counts = [0] * bins
-    for r in dist_positions:
-        idx = min(bins - 1, int((r - lo) / width))
-        counts[idx] += 1
-    return [{"lo": lo + i * width, "hi": lo + (i + 1) * width, "count": c}
-            for i, c in enumerate(counts)]
+    ordered = sorted(samples)
+    n = len(ordered)
+    out = []
+    for p in range(1, 100):
+        out.append({"p": p, "value": ordered[min(n - 1, int(p / 100 * n))]})
+    return out
 
 
 def deal_fields(pricing: dict) -> dict:
@@ -181,6 +191,6 @@ def public_pricing(pricing: dict) -> dict:
         "term_weeks": pricing["term_weeks"],
         "business_irr": pricing["business_irr"],
         "returns": summarise_returns(pricing.get("distribution", {})),
-        "histogram": pricing.get("distribution", {}).get("histogram", []),
+        "curve": pricing.get("distribution", {}).get("curve", []),
         "weekly_net_c": [int(v) for v in pricing["weekly_net_c"]],
     }

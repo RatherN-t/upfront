@@ -136,8 +136,15 @@ class SimulatedGateway:
         self._counter += 1
         return f"{prefix}_sim{self._counter:08d}"
 
-    def create_managed_merchant(self, profile: BookProfile, **_: Any) -> dict:
-        mch = self._next_id("mch")
+    def create_managed_merchant(self, profile: BookProfile, *,
+                                email: str = "", **_: Any) -> dict:
+        # Derived from the business's identity, not a process-global counter:
+        # the same business must produce the same merchant id, and therefore
+        # the same book, on every run. A counter drifts whenever the server
+        # restarts, and a demo that changes its numbers between rehearsal and
+        # stage is worse than no demo.
+        h = hashlib.sha256((email or profile.name).encode()).hexdigest()[:10]
+        mch = f"mch_sim{h}"
         self._books[mch] = profile
         return {
             "id": mch,

@@ -85,6 +85,28 @@ class TestProfile(unittest.TestCase):
             BookProfile(name="x", sector="s", asset_class="receivable",
                         ticket_c=3478, cadence="weekly", customers=10)
 
+    def test_simulated_merchant_id_is_stable_across_restarts(self):
+        """The demo must not drift. A fresh gateway (as after a server
+        restart) must hand the same business the same merchant id, and
+        therefore the same book."""
+        p = BookProfile(name="Voltride", sector="e", asset_class="contract",
+                        ticket_c=3478, cadence="weekly", customers=120,
+                        seed_key="ops@voltride.example")
+        a = SimulatedGateway().create_managed_merchant(
+            p, email="ops@voltride.example")["id"]
+        g = SimulatedGateway()
+        g.create_managed_merchant(p, email="someone-else@x.test")  # bump state
+        b = g.create_managed_merchant(p, email="ops@voltride.example")["id"]
+        self.assertEqual(a, b)
+
+    def test_different_businesses_get_different_books(self):
+        g = SimulatedGateway()
+        p = BookProfile(name="A", sector="e", asset_class="contract",
+                        ticket_c=3478, cadence="weekly", customers=50)
+        self.assertNotEqual(
+            g.create_managed_merchant(p, email="a@x.test")["id"],
+            g.create_managed_merchant(p, email="b@x.test")["id"])
+
     def test_same_seed_key_is_reproducible(self):
         a = BookProfile(name="x", sector="s", asset_class="contract",
                         ticket_c=3478, cadence="weekly", customers=10,
@@ -371,6 +393,45 @@ class TestSummarise(unittest.TestCase):
     def test_empty_distribution_is_zeroed_not_missing(self):
         r = summarise_returns({})
         self.assertEqual(set(r), {"mean", "p5", "p1", "prob_loss"})
+
+
+class TestPercentileCurve(unittest.TestCase):
+    """The chart and the headline numbers must be the same computation.
+
+    If the curve is derived differently from p5/p1, the two can drift and the
+    page ends up quoting a downside its own chart contradicts.
+    """
+
+    def setUp(self):
+        db.reset_db()
+        main.GATEWAY = SimulatedGateway()
+        self.client = TestClient(main.app)
+
+    def test_curve_agrees_with_quoted_percentiles(self):
+        self.client.post("/api/business/start",
+                         json={"name": "Voltride", "email": "v@x.test"})
+        self.client.post("/api/business/onboard", json=ONBOARD)
+        me = _wait_ready(self.client)
+        self.assertEqual(me["status"], "ready", me["status_detail"])
+
+        pricing = me["pricing"]
+        curve = {pt["p"]: pt["value"] for pt in pricing["curve"]}
+        self.assertEqual(len(curve), 99)
+        self.assertAlmostEqual(curve[5], pricing["returns"]["p5"], places=9)
+        self.assertAlmostEqual(curve[1], pricing["returns"]["p1"], places=9)
+
+    def test_curve_is_monotonic(self):
+        from underwriting import percentile_curve
+        import random
+        rng = random.Random(3)
+        xs = [rng.gauss(0.1, 0.05) for _ in range(2000)]
+        vals = [pt["value"] for pt in percentile_curve(xs)]
+        self.assertEqual(vals, sorted(vals),
+                         "a percentile curve must never go down as p rises")
+
+    def test_empty_samples_give_empty_curve(self):
+        from underwriting import percentile_curve
+        self.assertEqual(percentile_curve([]), [])
 
 
 if __name__ == "__main__":

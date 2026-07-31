@@ -1,0 +1,19 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: Upfront
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - strong [ref=e8]: "Pinch: SIMULATED"
+      - generic [ref=e9]: No Pinch credentials found — running the in-process simulator. Shapes match the Pinch API and the same adapter code runs, but no API call is being made.
+    - generic [ref=e24]:
+      - button "← Back" [ref=e25] [cursor=pointer]
+      - generic [ref=e26]:
+        - heading "Your business" [level=2] [ref=e27]
+        - paragraph [ref=e28]: No password — this is a test-mode prototype.
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: Company name
+            - textbox "Voltride Pty Ltd" [ref=e32]
+          - generic [ref=e33]:
+            - generic [ref=e34]: Email
+            - textbox "ops@voltride.example" [ref=e35]
+          - button "Continue" [ref=e36] [cursor=pointer]

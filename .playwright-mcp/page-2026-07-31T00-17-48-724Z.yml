@@ -1,0 +1,20 @@
+- generic [ref=f2e2]:
+  - generic [ref=f2e3]: Upfront
+  - generic [ref=f2e6]:
+    - generic [ref=f2e7]:
+      - strong [ref=f2e8]: "Pinch: SIMULATED"
+      - generic [ref=f2e9]: No Pinch credentials found — running the in-process simulator. Shapes match the Pinch API and the same adapter code runs, but no API call is being made.
+    - generic [ref=f2e10]:
+      - heading "Revenue you've already won, paid today." [level=1] [ref=f2e11]
+      - paragraph [ref=f2e12]: Businesses sell committed contract revenue at a discount. Investors fund the advance. Collections route back automatically on the Pinch rail — repayment isn't a promise, it's the plumbing.
+    - generic [ref=f2e13]:
+      - generic [ref=f2e14]:
+        - generic [ref=f2e15]: For businesses
+        - heading "Get paid now" [level=2] [ref=f2e16]
+        - paragraph [ref=f2e17]: Connect your Pinch account. We read your real payment attempts — not a P&L you typed — and make an offer against what actually settles.
+        - button "I'm a business" [ref=f2e18] [cursor=pointer]
+      - generic [ref=f2e19]:
+        - generic [ref=f2e20]: For investors
+        - heading "Fund a book" [level=2] [ref=f2e21]
+        - paragraph [ref=f2e22]: Back real Australian businesses against revenue we can see. Every deal shows its mean, its 5th percentile and its chance of loss together.
+        - button "I'm an investor" [ref=f2e23] [cursor=pointer]

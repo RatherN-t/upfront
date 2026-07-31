@@ -80,6 +80,10 @@ p { margin: 0; }
   border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
 }
 .card.flush { padding: 0; overflow: hidden; }
+/* Deal cards sit side by side; keep their calls-to-action on one line even
+   when the metadata above wraps to different heights. */
+.card.deal { display: flex; flex-direction: column; }
+.card.deal > .cta { margin-top: auto; padding-top: 16px; }
 
 .stat { display: flex; flex-direction: column; gap: 4px; }
 .stat .label {

@@ -61,7 +61,9 @@ export const scoreClass = (grade) =>
 export function daysLeft(iso) {
   const ms = new Date(iso).getTime() - Date.now()
   if (ms <= 0) return 'closed'
-  const d = Math.floor(ms / 86400000)
-  if (d >= 1) return `${d}d left`
-  return `${Math.max(1, Math.floor(ms / 3600000))}h left`
+  const hours = ms / 3600000
+  // Round up: a 7-day round should read "7d left" the moment it opens, not
+  // "6d" because a few seconds have elapsed.
+  if (hours >= 24) return `${Math.ceil(hours / 24)}d left`
+  return `${Math.max(1, Math.ceil(hours))}h left`
 }

@@ -1,6 +1,7 @@
 import { money, pct, scoreClass } from './api'
 import {
-  Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer,
+  Tooltip, XAxis, YAxis,
 } from 'recharts'
 
 export function Stat({ label, value, sub, tone, small }) {
@@ -123,42 +124,65 @@ export function BookScan({ scan }) {
   )
 }
 
-/** Outcome distribution. The shape matters more than the mean. */
-export function DistributionChart({ histogram }) {
-  if (!histogram || !histogram.length) return null
-  const data = histogram.map((h) => ({
-    mid: ((h.lo + h.hi) / 2) * 100,
-    count: h.count,
-    loss: h.hi <= 0,
-  }))
+/**
+ * Return at each percentile.
+ *
+ * Not a histogram, deliberately. A single deal's outcome is close to a point
+ * mass — if the business survives, the return is nearly fixed — so a
+ * histogram is one spike beside an empty axis, and the information that
+ * matters is in the thin left tail. This curve shows the ordinary case (the
+ * flat right) and the risk (the cliff on the left) without distorting
+ * either, and p5/p1 in the summary above are literally points on this line.
+ */
+export function DistributionChart({ curve }) {
+  if (!curve || !curve.length) return null
+  const data = curve.map((d) => ({ p: d.p, value: d.value * 100 }))
+  const worst = data[0]
+  const crossing = data.find((d) => d.value >= 0)
+
   return (
     <div className="card">
-      <h3>Outcome distribution</h3>
+      <h3>Return by percentile</h3>
       <p className="small muted" style={{ margin: '8px 0 16px' }}>
-        {data.length} buckets over simulated outcomes. Red is money lost.
+        Read it as "this outcome or worse, this often". The flat stretch on
+        the right is the ordinary result. The cliff on the left is the deal
+        failing — it is narrow, and it is deep.
       </p>
-      <div style={{ width: '100%', height: 210 }}>
+      <div style={{ width: '100%', height: 240 }}>
         <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
-            <XAxis dataKey="mid" tickFormatter={(v) => `${v.toFixed(0)}%`}
+          <AreaChart data={data} margin={{ top: 6, right: 10, bottom: 4, left: -12 }}>
+            <defs>
+              <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0e8c6a" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#0e8c6a" stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#e7ecee" vertical={false} />
+            <XAxis dataKey="p" tickFormatter={(v) => `${v}th`}
+                   ticks={[1, 5, 10, 25, 50, 75, 99]}
                    tick={{ fontSize: 11, fill: '#5b6b78' }} stroke="#e7ecee" />
-            <YAxis tick={{ fontSize: 11, fill: '#5b6b78' }} stroke="#e7ecee" />
+            <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`}
+                   tick={{ fontSize: 11, fill: '#5b6b78' }} stroke="#e7ecee" />
             <Tooltip
-              formatter={(v) => [`${v} runs`, 'count']}
-              labelFormatter={(v) => `${Number(v).toFixed(1)}% p.a.`}
+              formatter={(v) => [`${Number(v).toFixed(2)}% p.a.`, 'return']}
+              labelFormatter={(v) => `${v}th percentile — ${v}% of runs are worse`}
               contentStyle={{
                 borderRadius: 10, border: '1px solid #e7ecee',
                 fontSize: 12, fontFamily: 'var(--ui)',
               }}
             />
-            <Bar dataKey="count" radius={[3, 3, 0, 0]}>
-              {data.map((d, i) => (
-                <Cell key={i} fill={d.loss ? '#ff5263' : '#0e8c6a'} />
-              ))}
-            </Bar>
-          </BarChart>
+            <ReferenceLine y={0} stroke="#ff5263" strokeDasharray="4 3" />
+            <Area type="monotone" dataKey="value" stroke="#0e8c6a"
+                  strokeWidth={2} fill="url(#curveFill)" />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
+      <p className="small muted" style={{ marginTop: 10 }}>
+        Worst simulated run <span className="mono">{worst.value.toFixed(1)}%</span>.
+        {crossing
+          ? ` Breaks even around the ${crossing.p}th percentile — below that, you lose money.`
+          : ' Every simulated run lost money.'}
+      </p>
     </div>
   )
 }
