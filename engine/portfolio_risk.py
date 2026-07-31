@@ -93,7 +93,15 @@ class PortfolioParams:
 
 
 def simulate(positions: List[Position], params: PortfolioParams,
-             n: int = 20000, seed: int = 7) -> Dict:
+             n: int = 20000, seed: int = 7,
+             include_samples: bool = False) -> Dict:
+    """`include_samples` adds the raw sorted returns under "samples".
+
+    Off by default: the samples are large, and every caller that only wants
+    the summary (docs, FIGURES.json, the CLI report) should stay unaffected.
+    The web app turns them into a histogram, because the *shape* of the
+    distribution is the honest picture and a mean alone is not.
+    """
     rng = random.Random(seed)
     total_p = sum(p.principal_c for p in positions)
     if total_p == 0:
@@ -136,6 +144,7 @@ def simulate(positions: List[Position], params: PortfolioParams,
 
     return {
         "n": n,
+        **({"samples": returns} if include_samples else {}),
         "mean": sum(returns) / len(returns),
         "p50": pct(0.50), "p25": pct(0.25), "p10": pct(0.10),
         "p5": pct(0.05), "p1": pct(0.01),

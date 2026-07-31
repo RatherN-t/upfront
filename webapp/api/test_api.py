@@ -297,6 +297,76 @@ class TestFlow(unittest.TestCase):
         self.assertEqual(r.status_code, 409)
 
 
+class TestSecurity(unittest.TestCase):
+    def setUp(self):
+        db.reset_db()
+        main.GATEWAY = SimulatedGateway()
+        self.client = TestClient(main.app)
+
+    def test_expired_session_is_rejected(self):
+        import sqlite3
+        from datetime import datetime, timedelta, timezone
+        self.client.post("/api/business/start",
+                         json={"name": "V", "email": "v@x.test"})
+        self.assertEqual(self.client.get("/api/business/me").status_code, 200)
+
+        stale = (datetime.now(timezone.utc)
+                 - timedelta(hours=db.SESSION_TTL_HOURS + 1)).isoformat()
+        with db.connect() as c:
+            c.execute("UPDATE sessions SET created_at=?", (stale,))
+
+        self.assertEqual(self.client.get("/api/business/me").status_code, 401,
+                         "a session past its TTL must not authenticate")
+
+    def test_expired_session_row_is_removed(self):
+        from datetime import datetime, timedelta, timezone
+        r = self.client.post("/api/business/start",
+                             json={"name": "V", "email": "v@x.test"})
+        stale = (datetime.now(timezone.utc)
+                 - timedelta(hours=db.SESSION_TTL_HOURS + 1)).isoformat()
+        with db.connect() as c:
+            c.execute("UPDATE sessions SET created_at=?", (stale,))
+            token = c.execute("SELECT token FROM sessions").fetchone()["token"]
+        db.get_session(token)
+        with db.connect() as c:
+            left = c.execute("SELECT COUNT(*) n FROM sessions").fetchone()["n"]
+        self.assertEqual(left, 0)
+
+    def test_sign_out_invalidates_the_session(self):
+        self.client.post("/api/business/start",
+                         json={"name": "V", "email": "v@x.test"})
+        self.assertEqual(self.client.get("/api/business/me").status_code, 200)
+        self.client.post("/api/sign-out")
+        self.assertEqual(self.client.get("/api/business/me").status_code, 401)
+
+    def test_onboarding_failure_does_not_leak_internal_detail(self):
+        """A failing gateway must not echo upstream API bodies to the client.
+
+        PinchError carries the response body and URL, so returning str(exc)
+        would expose Pinch payloads to anyone polling their own status.
+        """
+        class Boom:
+            mode = "live"
+
+            def create_managed_merchant(self, *a, **k):
+                raise RuntimeError(
+                    "HTTP 401 on https://api.getpinch.com.au/test/merchants/"
+                    "managed: {'secret':'sk_test_super_secret','token':'eyJhbG'}")
+
+        main.GATEWAY = Boom()
+        self.client.post("/api/business/start",
+                         json={"name": "V", "email": "v@x.test"})
+        self.client.post("/api/business/onboard", json=ONBOARD)
+        me = _wait_ready(self.client)
+
+        self.assertEqual(me["status"], "failed")
+        detail = me["status_detail"]
+        for leak in ("sk_test", "eyJhbG", "getpinch.com.au", "secret"):
+            self.assertNotIn(leak, detail,
+                             f"internal detail leaked to client: {detail!r}")
+        self.assertIn("RuntimeError", detail, "error class is still useful")
+
+
 class TestSummarise(unittest.TestCase):
     def test_empty_distribution_is_zeroed_not_missing(self):
         r = summarise_returns({})

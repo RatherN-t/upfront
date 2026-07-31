@@ -71,7 +71,11 @@ def underwrite(pull: dict, profile: BookProfile) -> dict:
 
 
 def distribution_for(pricing: dict, sims: int = SINGLE_DEAL_SIMS) -> dict:
-    """Monte-Carlo outcome distribution for one deal."""
+    """Monte-Carlo outcome distribution for one deal.
+
+    Samples are requested so the UI can plot the shape, then dropped from the
+    stored result — the histogram survives, the 8,000 floats do not.
+    """
     pos = Position(
         name="deal",
         principal_c=pricing["cash_today_c"],
@@ -80,7 +84,11 @@ def distribution_for(pricing: dict, sims: int = SINGLE_DEAL_SIMS) -> dict:
         pd_annual=pricing["pd_annual"],
         asset_class=pricing["asset_class"],
     )
-    return simulate([pos], PortfolioParams(), n=sims, seed=7)
+    dist = simulate([pos], PortfolioParams(), n=sims, seed=7,
+                    include_samples=True)
+    samples = dist.pop("samples", [])
+    dist["histogram"] = histogram(samples)
+    return dist
 
 
 def summarise_returns(dist: dict) -> dict:
@@ -173,5 +181,6 @@ def public_pricing(pricing: dict) -> dict:
         "term_weeks": pricing["term_weeks"],
         "business_irr": pricing["business_irr"],
         "returns": summarise_returns(pricing.get("distribution", {})),
+        "histogram": pricing.get("distribution", {}).get("histogram", []),
         "weekly_net_c": [int(v) for v in pricing["weekly_net_c"]],
     }

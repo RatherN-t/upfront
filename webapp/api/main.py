@@ -16,6 +16,27 @@ call per payment and takes far longer than a request should. The client polls
 
 Every response that touched Pinch carries `pinch_mode`. See pinch_gateway.py
 for why that is not optional.
+
+SECURITY — READ BEFORE PUTTING THIS IN FRONT OF REAL USERS
+----------------------------------------------------------
+Sign-in is name + email with **no password and no verification**, a
+deliberate scope decision for a test-mode hackathon prototype
+(docs/superpowers/specs/2026-07-31-marketplace-app-design.md). The
+consequence is an authentication bypass by design: anyone who knows or
+guesses a business's email can POST /api/business/start with it and receive
+a session for that business, including its managed-merchant id, its priced
+book, and the ability to open a funding round in its name. The same holds
+for investors.
+
+That is acceptable only because this runs in Pinch **test mode** where no
+real money moves and every merchant is `testOnlyMerchant`. It is not a
+finding to be waved off if this ever points at live credentials — real auth
+(password or email verification, plus per-business authorisation checks on
+every route) is a prerequisite for that, not a nice-to-have.
+
+What IS enforced: sessions are server-side rows with a 24-hour TTL checked on
+every request, roles are separated (a business session cannot call investor
+routes), and internal error detail is never returned to clients.
 """
 
 from __future__ import annotations
@@ -74,7 +95,20 @@ def _require(role: str, token: Optional[str]):
 
 def _set_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax",
-                    max_age=60 * 60 * 24)
+                    max_age=60 * 60 * db.SESSION_TTL_HOURS)
+
+
+def _safe_error(exc: Exception) -> str:
+    """A message safe to send to a client.
+
+    Never interpolate the exception text: `PinchError` carries the upstream
+    response body and URL, so returning `str(exc)` would leak Pinch API
+    payloads — and potentially credentials echoed in an error — to anyone
+    polling their own onboarding status. The full detail goes to the server
+    log, where it belongs.
+    """
+    traceback.print_exc()
+    return f"{type(exc).__name__} — see server logs"
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +144,14 @@ class Invest(BaseModel):
 # ---------------------------------------------------------------------------
 # meta
 # ---------------------------------------------------------------------------
+
+@app.post("/api/sign-out")
+def sign_out(resp: Response,
+             upfront_session: Optional[str] = Cookie(None)) -> dict:
+    db.delete_session(upfront_session or "")
+    resp.delete_cookie(SESSION_COOKIE)
+    return {"ok": True}
+
 
 @app.get("/api/health")
 def health() -> dict:
@@ -227,9 +269,8 @@ def _run_onboarding(business_id: int, profile: BookProfile,
         db.update_business(business_id, status="ready", status_detail="",
                            pricing=json.dumps(public_pricing(pricing)))
     except Exception as exc:                      # noqa: BLE001
-        traceback.print_exc()
         db.update_business(business_id, status="failed",
-                           status_detail=f"{type(exc).__name__}: {exc}"[:400])
+                           status_detail=_safe_error(exc))
 
 
 @app.post("/api/business/open-round")
@@ -357,10 +398,10 @@ def invest(body: Invest,
                                   "investment_id": investment_id}},
         )
     except Exception as exc:                      # noqa: BLE001
-        traceback.print_exc()
         return {"investment_id": investment_id, "accepted_c": accepted_c,
                 "payment_link": None,
-                "warning": f"commitment recorded, payment link failed: {exc}"}
+                "warning": ("commitment recorded, payment link failed: "
+                            + _safe_error(exc))}
 
     db.attach_payment_link(investment_id, link.get("id", ""),
                            link.get("url", ""), GATEWAY.mode)

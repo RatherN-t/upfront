@@ -18,7 +18,7 @@ import secrets
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
@@ -146,6 +146,9 @@ def reset_db() -> None:
 # sessions
 # ---------------------------------------------------------------------------
 
+SESSION_TTL_HOURS = 24
+
+
 def create_session(role: str, owner_id: int) -> str:
     token = secrets.token_urlsafe(24)
     with _write_lock, connect() as c:
@@ -155,10 +158,44 @@ def create_session(role: str, owner_id: int) -> str:
 
 
 def get_session(token: str) -> Optional[sqlite3.Row]:
+    """Look up a session, treating an expired one as absent.
+
+    The cookie carries its own max-age, but a cookie's expiry is a client-side
+    hint — a copied token would otherwise stay valid forever. The row is the
+    authority, so the TTL is enforced here and expired rows are deleted on
+    sight rather than left to accumulate.
+    """
     if not token:
         return None
     with connect() as c:
-        return c.execute("SELECT * FROM sessions WHERE token=?", (token,)).fetchone()
+        row = c.execute("SELECT * FROM sessions WHERE token=?", (token,)).fetchone()
+    if row is None:
+        return None
+    try:
+        created = datetime.fromisoformat(row["created_at"])
+    except ValueError:
+        created = None
+    if created is None or (
+            datetime.now(timezone.utc) - created
+            > timedelta(hours=SESSION_TTL_HOURS)):
+        delete_session(token)
+        return None
+    return row
+
+
+def delete_session(token: str) -> None:
+    if not token:
+        return
+    with _write_lock, connect() as c:
+        c.execute("DELETE FROM sessions WHERE token=?", (token,))
+
+
+def purge_expired_sessions() -> int:
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(hours=SESSION_TTL_HOURS)).isoformat()
+    with _write_lock, connect() as c:
+        cur = c.execute("DELETE FROM sessions WHERE created_at < ?", (cutoff,))
+        return cur.rowcount or 0
 
 
 # ---------------------------------------------------------------------------
