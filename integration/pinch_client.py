@@ -296,6 +296,42 @@ class MerchantScope:
             body["sourceId"] = source_id
         return self._post("/payments", body)
 
+    def create_plan(self, *, name: str, amount_c: int,
+                    interval: str = "weekly", n_payments: int = 26,
+                    start_offset_days: int = 0,
+                    metadata: Optional[dict] = None) -> dict:
+        """Create a recurring Plan — the template a Subscription instantiates.
+
+        `interval` is the Pinch recurring frequency; `n_payments` ends the
+        schedule by count rather than by date, which keeps the forward book a
+        fixed horizon the engine can discount.
+        """
+        body: dict = {
+            "name": name,
+            "recurringPayment": {
+                "amount": _cents(amount_c),
+                "interval": interval,
+                "numberOfPayments": n_payments,
+                "startOffsetDays": start_offset_days,
+            },
+        }
+        if metadata:
+            body["metadata"] = json.dumps(metadata)
+        return self._post("/plans", body)
+
+    def create_subscription(self, *, plan_id: str, payer_id: str,
+                            start_date: str,
+                            total_amount_c: Optional[int] = None,
+                            metadata: Optional[dict] = None) -> dict:
+        """Bind a Plan to a Payer, generating the dated Payment records."""
+        body: dict = {"planId": plan_id, "payerId": payer_id,
+                      "startDate": start_date}
+        if total_amount_c is not None:
+            body["totalAmount"] = _cents(total_amount_c)
+        if metadata:
+            body["metadata"] = json.dumps(metadata)
+        return self._post("/subscriptions", body)
+
     # convenience: the full underwriting pull in one call
     def pull_book(self) -> dict:
         """Everything the engine needs to price this merchant's book."""
