@@ -1,201 +1,119 @@
-/* Design tokens carried over from prototype.html so the running product and
-   the pitch material look like the same company. */
-:root {
-  --ink: #12211b;
-  --paper: #f4f6f3;
-  --card: #fff;
-  --cash: #0e8c6a;
-  --cash-soft: #d9efe7;
-  --slate: #5b6b78;
-  --slate-soft: #e7ecee;
-  --rail: #ff5263;
-  --rail-soft: #ffe3e6;
-  --gold: #b98829;
-  --gold-soft: #f7eedc;
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap');
+@import 'tailwindcss';
 
-  --ui: "General Sans", Inter, system-ui, -apple-system, sans-serif;
-  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+@theme {
+  /* Steep: serif analytics on warm paper, with emerald in place of peach. */
+  --font-display: 'Inter Tight', 'Helvetica Neue', Helvetica, -apple-system,
+    system-ui, sans-serif;
+  --font-sans: 'Inter', -apple-system, system-ui, sans-serif;
 
-  --bg: var(--paper);
-  --fg: var(--ink);
-  --surface: var(--card);
-  --line: var(--slate-soft);
+  --color-ink: #17191c;
+  --color-paper: #ffffff;
+  --color-mist: #f2f2f3;
+  --color-fog: #fafafb;
+  --color-slate: #777b86;
+  --color-ash: #979799;
+  --color-smoke: #a3a6af;
+  --color-hair: #ececec;
 
-  --r: 14px;
-  --shadow: 0 1px 2px rgba(18, 33, 27, 0.04), 0 8px 24px rgba(18, 33, 27, 0.06);
+  /* Secondary accent: emerald replaces Blush Peach / Sienna Brown. */
+  /* The picked green, used as a surface for banners and section headers,
+   * never as body text (it fails contrast on paper). */
+  --color-mint: #6ed69a;
+  --color-mint-soft: #b7e9cc;
+  --color-wash: #e6f6ec;
+  --color-emerald: #0f7a4d;
+  --color-emerald-deep: #10402c;
+  --color-flag: #b4432f;
+
+  --radius-card: 24px;
+  --radius-elevated: 20px;
+  --radius-input: 16px;
+
+  --shadow-artifact:
+    0 0 0 1px rgba(4, 23, 43, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-overlay:
+    0 0 0 1px rgba(4, 23, 43, 0.05), 0 8px 40px 0 rgba(0, 0, 0, 0.1);
 }
 
-* { box-sizing: border-box; }
-
-html, body, #root { height: 100%; }
-
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--ui);
-  font-size: 15px;
-  line-height: 1.5;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
-h1 { font-size: 2rem; font-weight: 640; }
-h2 { font-size: 1.3rem; font-weight: 620; }
-h3 { font-size: 1rem; font-weight: 620; }
-p { margin: 0; }
-
-.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.muted { color: var(--slate); }
-.small { font-size: 0.82rem; }
-
-/* ---------- layout ---------- */
-
-.shell { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
-
-.topbar {
-  display: flex; align-items: center; gap: 16px;
-  padding: 18px 24px; border-bottom: 1px solid var(--line);
-  background: var(--surface); margin-bottom: 32px;
-}
-.topbar .brand {
-  font-weight: 680; letter-spacing: -0.03em; font-size: 1.15rem;
-  display: flex; align-items: center; gap: 9px;
-}
-.topbar .spacer { flex: 1; }
-
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--cash); }
-
-.grid { display: grid; gap: 16px; }
-.grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.grid.three { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-.grid.four { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
-
-.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-/* ---------- surfaces ---------- */
-
-.card {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
-}
-.card.flush { padding: 0; overflow: hidden; }
-/* Deal cards sit side by side; keep their calls-to-action on one line even
-   when the metadata above wraps to different heights. */
-.card.deal { display: flex; flex-direction: column; }
-.card.deal > .cta { margin-top: auto; padding-top: 16px; }
-
-.stat { display: flex; flex-direction: column; gap: 4px; }
-.stat .label {
-  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.09em;
-  color: var(--slate); font-weight: 600;
-}
-.stat .value { font-family: var(--mono); font-size: 1.45rem; font-weight: 500; }
-.stat .value.sm { font-size: 1.1rem; }
-.stat .sub { font-size: 0.78rem; color: var(--slate); }
-
-.value.pos { color: var(--cash); }
-.value.neg { color: var(--rail); }
-
-/* ---------- controls ---------- */
-
-button, .btn {
-  font-family: var(--ui); font-size: 0.92rem; font-weight: 580;
-  padding: 11px 18px; border-radius: 10px; border: 1px solid transparent;
-  background: var(--ink); color: var(--paper); cursor: pointer;
-  transition: transform 0.06s ease, opacity 0.15s ease;
-}
-button:hover:not(:disabled) { opacity: 0.88; }
-button:active:not(:disabled) { transform: translateY(1px); }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
-button.ghost {
-  background: transparent; color: var(--fg); border-color: var(--line);
-}
-button.cash { background: var(--cash); }
-button.wide { width: 100%; }
-
-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; }
-
-input, select {
-  width: 100%; padding: 10px 12px; border-radius: 10px;
-  border: 1px solid var(--line); background: var(--surface);
-  color: var(--fg); font-family: var(--ui); font-size: 0.95rem;
-}
-input:focus, select:focus { outline: 2px solid var(--cash-soft); border-color: var(--cash); }
-
-.field { margin-bottom: 14px; }
-
-/* ---------- chips ---------- */
-
-.chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 999px; font-size: 0.74rem;
-  font-weight: 620; letter-spacing: 0.01em;
-  background: var(--slate-soft); color: var(--slate);
-}
-.chip.cash { background: var(--cash-soft); color: var(--cash); }
-.chip.rail { background: var(--rail-soft); color: var(--rail); }
-.chip.gold { background: var(--gold-soft); color: var(--gold); }
-
-.score {
-  font-family: var(--mono); font-weight: 600; font-size: 1.05rem;
-  padding: 3px 11px; border-radius: 8px;
-  background: var(--cash-soft); color: var(--cash);
-}
-.score.b { background: var(--gold-soft); color: var(--gold); }
-.score.c { background: var(--rail-soft); color: var(--rail); }
-
-/* ---------- progress ---------- */
-
-.bar { height: 8px; border-radius: 99px; background: var(--slate-soft); overflow: hidden; }
-.bar > i { display: block; height: 100%; background: var(--cash); border-radius: 99px; }
-
-/* ---------- tables ---------- */
-
-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); }
-th {
-  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--slate); font-weight: 640;
-}
-td.num, th.num { text-align: right; font-family: var(--mono); }
-tr:last-child td { border-bottom: none; }
-
-/* ---------- mode banner ----------
-   Whether Pinch is live or simulated is never hidden. */
-.mode {
-  display: flex; gap: 10px; align-items: flex-start;
-  padding: 11px 16px; border-radius: 10px; font-size: 0.82rem;
-  margin-bottom: 22px; border: 1px solid;
-}
-.mode.live { background: var(--cash-soft); border-color: var(--cash); color: #0a5f48; }
-.mode.simulated { background: var(--gold-soft); border-color: var(--gold); color: #7a5a12; }
-
-/* ---------- misc ---------- */
-
-.steps { display: flex; flex-direction: column; gap: 10px; }
-.step { display: flex; align-items: center; gap: 11px; font-size: 0.9rem; }
-.step .mark {
-  width: 20px; height: 20px; border-radius: 50%; flex: none;
-  display: grid; place-items: center; font-size: 0.7rem;
-  background: var(--slate-soft); color: var(--slate);
-}
-.step.done .mark { background: var(--cash); color: #fff; }
-.step.active .mark { background: var(--ink); color: #fff; }
-.step.pending { color: var(--slate); }
-
-.error {
-  padding: 12px 16px; border-radius: 10px; font-size: 0.85rem;
-  background: var(--rail-soft); color: #a32431; border: 1px solid var(--rail);
+/* Display type is a tight neo-grotesque at bold, Helvetica Bold / SF Pro
+ * Display in feel. Optical tracking tightens as the size grows. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
 }
 
-.divider { height: 1px; background: var(--line); margin: 22px 0; }
-
-.spin {
-  width: 15px; height: 15px; border-radius: 50%; flex: none;
-  border: 2px solid var(--slate-soft); border-top-color: var(--ink);
-  animation: spin 0.7s linear infinite;
+/* Emphasis inside a headline is carried by colour, not italics, because a bold
+ * grotesque has no convincing italic to lean on. */
+.display em {
+  font-style: normal;
+  color: var(--color-emerald);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-a { color: var(--cash); }
+/* On a green surface the emerald emphasis disappears, so go to paper instead. */
+.bg-mint .display em {
+  color: var(--color-paper);
+}
+
+/* Range input, drawn to match the kit. The filled portion is painted onto the
+ * track with a gradient stop at --fill, set inline by the Slider component. */
+.upfront-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--color-emerald) 0 var(--fill),
+    var(--color-mint-soft) var(--fill) 100%
+  );
+  cursor: pointer;
+}
+.upfront-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 24px;
+  width: 24px;
+  border-radius: 9999px;
+  background: var(--color-emerald);
+  border: 3px solid var(--color-paper);
+  box-shadow: var(--shadow-overlay);
+}
+.upfront-slider::-moz-range-thumb {
+  height: 24px;
+  width: 24px;
+  border: 3px solid var(--color-paper);
+  border-radius: 9999px;
+  background: var(--color-emerald);
+}
+
+::selection {
+  background: var(--color-wash);
+  color: var(--color-emerald-deep);
+}
+
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

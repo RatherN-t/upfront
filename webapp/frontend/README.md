@@ -1,16 +1,27 @@
-# React + Vite
+# Upfront frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite 8 + Tailwind CSS v4. Speaks to the FastAPI app under
+`webapp/api/` via the Vite `/api` proxy (same-origin session cookie).
 
-Currently, two official plugins are available:
+```
+src/
+  App.tsx                 shell, mode banner, role gate
+  api.ts                  fetch client + money/pct helpers
+  pages/
+    Landing.tsx           thesis + calculation reveal
+    SignIn.tsx            name + email → session
+    BusinessFlow.tsx      path → connect/onboard → offer → round → collections
+    InvestorFlow.tsx      marketplace → deal → stake → committed
+    Collections.tsx       post-funding collections story
+  components/
+    ui.tsx                design primitives
+    Calculation.tsx       animated eligibility → cash today
+    domain.tsx            BookScan, FeeDrag, DistributionChart
+  lib/data.ts             landing / collections worked example
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npm install
+npm run dev      # http://localhost:5173  (API on :8017)
+npm run build
+```
