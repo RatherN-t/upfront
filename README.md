@@ -1,6 +1,7 @@
 # Upfront
 
-Receivables financing on the Pinch rail, funded by ordinary retail investors.
+Hackathon prototype, test mode only: receivables financing on the Pinch rail,
+funded by ordinary retail investors.
 
 A business sells committed contract revenue or open invoices at a discount.
 Retail investors fund the advance. Collections route back automatically through
